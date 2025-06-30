@@ -1,0 +1,87 @@
+基础模块
+初始化与清理
+Framework_Init_Window() - 初始化主窗口
+
+Framework_Init_Renderer() - 初始化渲染器
+
+Framework_Init_TextEngine() - 初始化文本引擎
+
+Framework_Clean_Up() - 清理所有资源
+
+实用工具
+绘图函数：
+
+Framework_Draw_Circle() - 绘制空心圆
+
+Framework_Draw_FilledCircle() - 绘制实心圆
+
+数学工具：
+
+Size结构体 - 表示尺寸
+
+Vector2类 - 2D向量运算
+
+utils命名空间 - 角度转换、插值、距离计算等
+
+随机数：
+
+Random类 - 生成随机整数和浮点数
+
+时间管理：
+
+Clock类 - 控制FPS、时间缩放
+
+Timer类 - 定时器功能
+
+核心组件
+相机系统 (Camera)
+支持多种跟随模式(静态、平滑、仅X/Y轴)
+
+震动效果
+
+缩放功能
+
+提供多种渲染方法(纹理、线段、矩形、圆形)
+
+动画系统
+Animation - 序列帧动画
+
+支持循环/单次播放
+
+可设置播放速度、方向、回调函数
+
+AnimationPlayer - 动画播放器
+
+管理多个动画状态
+
+切换和播放控制
+
+精灵与场景
+Sprite - 精灵基类
+
+位置和速度属性
+
+虚函数接口(更新、渲染、输入处理)
+
+Scene - 场景基类
+
+生命周期管理(进入、更新、渲染、退出)
+
+输入事件处理
+
+资源管理
+资源管理器 (ResourcesManager)
+单例模式
+
+自动加载目录下的资源(纹理、音频、字体)
+
+提供资源查找功能
+
+调试信息输出
+
+场景管理器 (SceneManager)
+单例模式
+
+场景的添加、切换和管理
+
+当前场景的更新、渲染和输入处理
