@@ -109,9 +109,9 @@ inline void Framework_Draw_Circle(SDL_Renderer* renderer, float centerX, float c
 // 绘制实心圆
 inline void Framework_Draw_FilledCircle(SDL_Renderer* renderer, float centerX, float centerY, float radius)
 {
-	for (int y = -radius; y <= radius; y++)
+	for (float y = -radius; y <= radius; y += 1.0f)
 	{
-		int x = sqrtf(radius * radius - y * y);
+		float x = sqrtf(radius * radius - y * y);
 		SDL_RenderLine(renderer, centerX - x, centerY + y, centerX + x, centerY + y);
 	}
 }
@@ -308,7 +308,7 @@ public:
 	}
 
 	// 获取FPS
-	int getFPS() const { return 1000 / delta_time; }
+	int getFPS() const { return (int)(1000 / delta_time); }
 
 	// 获取帧间隔
 	float get_DeltaTime() const { return (delta_time / 1000.0f) * time_scale; }
@@ -333,7 +333,7 @@ private:
 		if (!mode) return 0;
 
 		// 返回刷新率（如果有效，否则返回默认值）
-		return (mode->refresh_rate > 0) ? mode->refresh_rate : 0;
+		return (mode->refresh_rate > 0) ? (int)mode->refresh_rate : 0;
 	}
 
 private:
@@ -465,9 +465,7 @@ public:
 	// 重置摄像机
 	void reset()
 	{
-		this->position = Vector2(0, 0);
-		this->shake_position = Vector2(0, 0);
-		this->base_position = Vector2(0, 0);
+		position = base_position = shake_position = Vector2(0, 0);
 		this->zoom = 1.0f;		// 重置缩放为1.0
 	}
 
@@ -610,7 +608,7 @@ private:
 	const float SMOOTH_FACTOR = 1.5f;			// 平滑系数
 };
 
-// 动画类
+// 序列帧动画
 class Animation
 {
 public:
@@ -820,14 +818,215 @@ protected:
 class Scene
 {
 public:
-	Scene() = default;				// 构造函数处初始化实例化对象
-	virtual ~Scene() = default;		// 析函数出释放实例化对象
+	Scene() = default;	// 构造函数处初始化实例化对象
+
+	// 析函数出释放实例化对象
+	virtual ~Scene()
+	{
+		for(auto& sprite: sprite_pool)
+			delete sprite.second;
+		sprite_pool.clear();
+	}
+
+	// 获取精灵
+	template <typename _CvtTy>
+	_CvtTy* find_sprite(const std::string& name)
+	{
+		if (sprite_pool.find(name) == sprite_pool.end())
+			throw custom_runtime_error(u8"SceneManager Error", u8"Sprite “" + name + u8"” is not found!");
+		return (_CvtTy*)sprite_pool[name];
+	}
 
 	virtual void on_enter() = 0;						// 进入场景（尽量不要创建新对象，而是对角色属性的重置）
 	virtual void on_update(float delta) = 0;			// 更新场景
 	virtual void on_render(const Camera& camera) = 0;	// 渲染场景
 	virtual void on_input(const SDL_Event& event) = 0;	// 输入事件处理
 	virtual void on_exit() = 0;							// 退出场景（尽量不要销毁对象）
+	
+protected:
+	std::unordered_map<std::string, Sprite*> sprite_pool;	// 精灵池
+};
+
+// 按钮（仅适用与UI层）
+class Button
+{
+public:
+	Button() = default;
+	Button(const Vector2& pos, const Size& size)
+		: position(pos), size(size) {}
+
+	~Button() = default;
+
+	// 设置位置
+	void set_position(const Vector2& pos) { this->position = pos; }
+
+	// 获取位置
+	const Vector2& get_position() const { return this->position; }
+
+	// 设置大小
+	void set_size(const Size& size) { this->size = size; }
+
+	// 获取大小
+	const Size& get_size() const { return this->size; }
+
+	// 设置点击回调函数
+	void set_on_click(std::function<void()> callback) { this->on_click = callback; }
+
+	// 设置按钮纹理（分别为：正常、悬停、被点击）
+	void set_texture(SDL_Texture* normal, SDL_Texture* hover, SDL_Texture* click)
+	{
+		// 检查纹理是否为nullptr
+		if (!normal || !hover || !click)
+			throw custom_runtime_error(u8"Button Argument Error", u8"Argument texture cannot be nullptr!");
+
+		this->tex_normal = normal;
+		this->tex_hover = hover;
+		this->tex_click = click;
+		this->current_texture = tex_normal;	// 默认显示正常状态纹理
+	}
+
+	// 渲染按钮
+	void on_render(SDL_Renderer* renderer, double angle, SDL_FPoint* center)
+	{
+		if (!current_texture) return;	// 如果没有设置纹理则不渲染
+		SDL_FRect rect_dst_win = { position.x, position.y, size.width, size.height };
+		SDL_RenderTextureRotated(renderer, current_texture, nullptr, &rect_dst_win, angle, center, SDL_FLIP_NONE);
+	}
+
+	// 处理输入事件
+	void on_input(const SDL_Event& event)
+	{
+		bool in_range_x = event.button.x >= position.x && event.button.x <= position.x + size.width;
+		bool in_range_y = event.button.y >= position.y && event.button.y <= position.y + size.height;
+
+		if (event.type == SDL_EVENT_MOUSE_MOTION)	// 鼠标悬停在按钮上
+		{
+			if (in_range_x && in_range_y)
+			{
+				this->current_texture = tex_hover;
+				SDL_SetCursor(SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_POINTER));
+			}
+			else
+			{
+				this->current_texture = tex_normal;
+				SDL_SetCursor(SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_DEFAULT));
+			}
+		}
+		if (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN && event.button.button == SDL_BUTTON_LEFT) // 按钮被点击
+		{
+			if (in_range_x && in_range_y)
+			{
+				this->current_texture = tex_click;
+				this->on_click();
+			}
+		}
+		if (event.type == SDL_EVENT_MOUSE_BUTTON_UP && event.button.button == SDL_BUTTON_LEFT) // 按钮被释放
+		{
+			if (in_range_x && in_range_y)
+				this->current_texture = tex_hover;
+			else
+				this->current_texture = tex_normal;
+		}
+	}
+
+private:
+	Vector2 position;			// 按钮位置
+	Size size;					// 按钮大小
+
+	SDL_Texture* tex_normal = nullptr;		// 正常状态纹理
+	SDL_Texture* tex_hover = nullptr;		// 悬停状态纹理
+	SDL_Texture* tex_click = nullptr;		// 按下状态纹理
+	SDL_Texture* current_texture = nullptr;	// 当前显示的纹理
+
+	std::function<void()> on_click;		// 点击回调函数
+};
+
+// 状态节点
+class StateNode
+{
+public:
+	StateNode() = default;
+	~StateNode() = default;
+
+	virtual void on_enter() {}					// 进入状态
+	virtual void on_update(float delta) {}		// 更新状态
+	virtual void on_exit() {}					// 退出状态
+};
+
+// 状态机
+class StateMachine
+{
+public:
+	StateMachine() = default;
+
+	~StateMachine()
+	{
+		for (auto& state : state_pool)
+			state.second.reset();
+
+		state_pool.clear();
+		current_state = nullptr;
+	}
+
+	void on_update(float delta)
+	{
+		if (!current_state)
+		{
+			std::string info = u8"Current state is nullptr! Please check if the status node is initialized";
+			throw custom_runtime_error(u8"StateMachine Error", info.c_str());
+		}
+
+		if (need_init)	// 如果需要初始化状态机
+		{
+			current_state->on_enter();
+			need_init = false;		// 初始化完成
+		}
+
+		current_state->on_update(delta);
+	}
+
+	void set_entry(const std::string& name)
+	{
+		// 如果未找到目标状态
+		if (state_pool.find(name) == state_pool.end())
+		{
+			std::string info = u8"State “" + name + u8"” is not found!";
+			throw custom_runtime_error(u8"StateMachine Error", info);
+		}
+
+		current_state = state_pool[name].get();
+	}
+
+	void switch_to(const std::string& name)
+	{
+		// 如果未找到目标状态
+		if (state_pool.find(name) == state_pool.end())
+		{
+			std::string info = u8"State “" + name + u8"” is not found!";
+			throw custom_runtime_error(u8"StateMachine Error", info);
+		}
+
+		if (current_state) current_state->on_exit();
+		current_state = state_pool[name].get();
+		current_state->on_enter();
+	}
+
+	void register_state(const std::string& name, std::unique_ptr<StateNode> state)
+	{
+		// 如果该状态已存在
+		if (state_pool.find(name) != state_pool.end())
+		{
+			std::string info = u8"State “" + name + u8"” is already exist!";
+			throw custom_runtime_error(u8"StateMachine Error", info);
+		}
+
+		state_pool[name] = std::move(state);		// 注册状态节点
+	}
+
+private:
+	bool need_init = true;		// 是否需要初始化状态机
+	StateNode* current_state = nullptr;		// 当前状态节点
+	std::unordered_map<std::string, std::unique_ptr<StateNode>> state_pool;		// 状态池
 };
 
 // =========================================================================================
@@ -998,6 +1197,16 @@ public:
 			throw custom_runtime_error(u8"SceneManager Error", u8"Scene “" + name + u8"” is already exist!");
 
 		scene_pool[name] = scene;
+	}
+
+	// 获取场景
+	inline Scene* find_scene(const std::string& name)
+	{
+		// 如果场景池中不存在该场景
+		if (scene_pool.find(name) == scene_pool.end())
+			throw custom_runtime_error(u8"SceneManager Error", u8"Scene “" + name + u8"” is not exist!");
+
+		return scene_pool[name];
 	}
 
 	// 更新当前场景
