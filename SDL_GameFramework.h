@@ -1,6 +1,6 @@
 #pragma once
 
-// 标准库头文件
+// 标准库
 #include <chrono>
 #include <filesystem>
 #include <functional>
@@ -49,7 +49,7 @@ inline void Framework_Init_Window(const char* title, int width, int height, SDL_
 }
 
 // 初始化内置渲染器
-inline void Framework_Init_Renderer(const char* name)
+inline void Framework_Init_Renderer(const char* name = nullptr)
 {
 	if (Main_Renderer) return;	// 如果渲染器已存在则不再创建
 	Main_Renderer = SDL_CreateRenderer(Main_Window, name);
@@ -395,8 +395,8 @@ private:
 	std::function<void()> on_timeout;	// 回调函数
 };
 
-// 小工具
-namespace utils
+// 数学运算工具
+namespace maths
 {
 	// 角度转弧度
 	inline float deg_to_rad(float degree) noexcept { return degree * PAI / 180.0f; }
@@ -414,6 +414,18 @@ namespace utils
 		float dy = pos_1.y - pos_2.y;
 		return sqrtf((dx * dx) + (dy * dy));
 	}
+};
+
+// 碰撞层级
+enum class CollisionLayer
+{
+	None = 0,				// 无碰撞层
+	Player = 1 << 0,		// 玩家层
+	Enemy = 1 << 1,			// 敌人层
+	GameMap = 1 << 2,		// 游戏地图层
+	GameObject = 1 << 3,	// 游戏元素层
+	Weapon = 1 << 4,		// 武器层
+	UI = 1 << 5				// UI层
 };
 
 // =========================================================================================
@@ -555,13 +567,13 @@ public:
 		else if (style & Camera::Smooth_Follow)		// 平滑跟随
 		{
 			if (style & Camera::Only_X)
-				this->base_position.x = utils::lerp(base_position.x, target_pos.x, smooth_strength);
+				this->base_position.x = maths::lerp(base_position.x, target_pos.x, smooth_strength);
 			else if (style & Camera::Only_Y)
-				this->base_position.y = utils::lerp(base_position.y, target_pos.y, smooth_strength);
+				this->base_position.y = maths::lerp(base_position.y, target_pos.y, smooth_strength);
 			else
 			{
-				this->base_position.x = utils::lerp(base_position.x, target_pos.x, smooth_strength);
-				this->base_position.y = utils::lerp(base_position.y, target_pos.y, smooth_strength);
+				this->base_position.x = maths::lerp(base_position.x, target_pos.x, smooth_strength);
+				this->base_position.y = maths::lerp(base_position.y, target_pos.y, smooth_strength);
 			}
 		}
 	}
@@ -679,11 +691,9 @@ public:
 		const Frame& frame = frame_list[idx_frame];
 		const Vector2& pos_camera = camera.get_position();
 
-		SDL_FRect rect_dst;
-		rect_dst.x = position.x - frame.rect_src.w / 2.0f;
-		rect_dst.y = position.y - frame.rect_src.h / 2.0f;
-		rect_dst.w = frame.rect_src.w;
-		rect_dst.h = frame.rect_src.h;
+		SDL_FRect rect_dst{};
+		rect_dst.x = position.x; rect_dst.y = position.y;
+		rect_dst.w = frame.rect_src.w; rect_dst.h = frame.rect_src.h;
 
 		camera.render_texture(frame.texture, &frame.rect_src, &rect_dst, angle, &center, is_flip);
 	}
@@ -715,81 +725,44 @@ private:
 	std::function<void()> on_finished;	// 动画播放完毕回调函数
 };
 
-// 动画播放器
-class AnimationPlayer
+class CollisionManager;
+// 碰撞箱
+class CollisionBox
 {
+	friend class CollisionManager;
 public:
-	AnimationPlayer() = default;
+	// 设置是否启用碰撞
+	void set_enabled(bool flag) { this->enabled = flag; }
 
-	~AnimationPlayer()
-	{
-		for (auto& anim : animation_pool)
-			anim.second.reset();		// 释放动画资源
+	// 设置自身碰撞层
+	void set_layer_src(CollisionLayer layer) { this->layer_src = layer; }
 
-		animation_pool.clear();
-		current_animation = nullptr;
-	}
+	// 设置目标碰撞层
+	void set_layer_dst(CollisionLayer layer) { this->layer_dst = layer; }
 
-	// 添加动画 (需要添加std::unique_ptr类型)
-	void add_animation(const std::string& name, std::unique_ptr<Animation> anim)
-	{
-		if (animation_pool.find(name) != animation_pool.end())
-			throw custom_runtime_error(error_title, u8"Animation “" + name + u8"” is already exist!");
+	// 设置碰撞回调函数
+	void set_on_collide(std::function<void()> callback) { this->on_collide = callback; }
 
-		animation_pool[name] = std::move(anim);
-	}
+	// 设置碰撞箱大小
+	void set_size(const Size& size) { this->size = size; }
 
-	// 切换动画
-	void switch_to(const std::string& name)
-	{
-		if (animation_pool.find(name) == animation_pool.end())
-			throw custom_runtime_error(error_title, u8"Animation “" + name + u8"” is not exist!");
+	// 获取碰撞箱大小
+	const Size& get_size() const { return this->size; }
 
-		this->current_animation = animation_pool[name].get();
-	}
-
-	// 设置当前动画
-	void set_animation(const std::string& name)
-	{
-		if (animation_pool.find(name) == animation_pool.end())
-			throw custom_runtime_error(error_title, u8"Animation “" + name + u8"” is not exist!");
-
-		this->current_animation = animation_pool[name].get();
-		this->current_animation->reset();
-	}
-
-	// 获取当前动画
-	Animation* get_current()
-	{
-		if (current_animation)
-			return current_animation;
-		else
-			throw custom_runtime_error(error_title, u8"“current_animation” is a nullptr!");
-	}
-
-	// 更新动画
-	void on_update(float delta)
-	{
-		if (current_animation)
-			current_animation->on_update(delta);
-		else
-			throw custom_runtime_error(error_title, u8"“current_animation” is a nullptr!");
-	}
-
-	// 渲染动画
-	void on_render(const Camera& camera)
-	{
-		if (current_animation)
-			current_animation->on_render(camera);
-		else
-			throw custom_runtime_error(error_title, u8"“current_animation” is a nullptr!");
-	}
+	// 设置碰撞箱位置
+	void set_position(const Vector2& pos) { this->position = pos; }
 
 private:
-	std::unordered_map<std::string, std::unique_ptr<Animation>> animation_pool;		// 动画池
-	Animation* current_animation = nullptr;											// 当前动画
+	Size size = { 0, 0 };								// 碰撞箱大小
+	Vector2 position;									// 碰撞箱位置
+	bool enabled = true;								// 是否启用碰撞检测
+	std::function<void()> on_collide;					// 碰撞回调函数
+	CollisionLayer layer_src = CollisionLayer::None;	// 自身碰撞层
+	CollisionLayer layer_dst = CollisionLayer::None;	// 目标碰撞层
 
-	std::string error_title = u8"Animation Player Error";	// 错误标题
+private:
+	CollisionBox() = default;
+	~CollisionBox() = default;
 };
 
 // 精灵抽象基类
@@ -810,8 +783,9 @@ public:
 	virtual void on_input(const SDL_Event& event) = 0;
 
 protected:
-	Vector2 position;	// 位置
-	Vector2 velocity;	// 速度
+	Vector2 position;						// 位置
+	Vector2 velocity;						// 速度
+	CollisionBox* collision_box = nullptr;	// 碰撞箱
 };
 
 // 场景抽象基类
@@ -953,6 +927,87 @@ public:
 	virtual void on_exit() {}					// 退出状态
 };
 
+// ===========================================================================================
+// 				行为控制器						Behavior Controllers
+// ===========================================================================================
+
+// 动画播放器
+class AnimationPlayer
+{
+public:
+	AnimationPlayer() = default;
+
+	~AnimationPlayer()
+	{
+		for (auto& anim : animation_pool)
+			anim.second.reset();		// 释放动画资源
+
+		animation_pool.clear();
+		current_animation = nullptr;
+	}
+
+	// 添加动画 (需要添加std::unique_ptr类型)
+	void add_animation(const std::string& name, std::unique_ptr<Animation> anim)
+	{
+		if (animation_pool.find(name) != animation_pool.end())
+			throw custom_runtime_error(error_title, u8"Animation “" + name + u8"” is already exist!");
+
+		animation_pool[name] = std::move(anim);
+	}
+
+	// 切换动画
+	void switch_to(const std::string& name)
+	{
+		if (animation_pool.find(name) == animation_pool.end())
+			throw custom_runtime_error(error_title, u8"Animation “" + name + u8"” is not exist!");
+
+		this->current_animation = animation_pool[name].get();
+	}
+
+	// 设置当前动画
+	void set_animation(const std::string& name)
+	{
+		if (animation_pool.find(name) == animation_pool.end())
+			throw custom_runtime_error(error_title, u8"Animation “" + name + u8"” is not exist!");
+
+		this->current_animation = animation_pool[name].get();
+		this->current_animation->reset();
+	}
+
+	// 获取当前动画
+	Animation* get_current()
+	{
+		if (current_animation)
+			return current_animation;
+		else
+			throw custom_runtime_error(error_title, u8"“current_animation” is a nullptr!");
+	}
+
+	// 更新动画
+	void on_update(float delta)
+	{
+		if (current_animation)
+			current_animation->on_update(delta);
+		else
+			throw custom_runtime_error(error_title, u8"“current_animation” is a nullptr!");
+	}
+
+	// 渲染动画
+	void on_render(const Camera& camera)
+	{
+		if (current_animation)
+			current_animation->on_render(camera);
+		else
+			throw custom_runtime_error(error_title, u8"“current_animation” is a nullptr!");
+	}
+
+private:
+	std::unordered_map<std::string, std::unique_ptr<Animation>> animation_pool;		// 动画池
+	Animation* current_animation = nullptr;											// 当前动画
+
+	std::string error_title = u8"Animation Player Error";	// 错误标题
+};
+
 // 状态机
 class StateMachine
 {
@@ -1038,7 +1093,7 @@ class ResourcesManager
 {
 public:
 	// 获取资源管理器单例
-	inline static ResourcesManager* instance()
+	static inline ResourcesManager* instance()
 	{
 		if (!m_instance)
 			m_instance = new ResourcesManager();
@@ -1246,3 +1301,93 @@ private:
 	std::unordered_map<std::string, Scene*> scene_pool;		// 场景池
 };
 inline SceneManager* SceneManager::m_instance = nullptr;
+
+// 碰撞管理器
+class CollisionManager
+{
+public:
+	// 获取碰撞管理器单例
+	static inline CollisionManager* instance()
+	{
+		if (!m_instance)
+			m_instance = new CollisionManager();
+
+		return m_instance;
+	}
+
+	// 添加碰撞箱
+	inline CollisionBox* create_collision_box()
+	{
+		CollisionBox* collision_box = new CollisionBox();
+		collision_box_list.push_back(collision_box);
+		return collision_box;
+	}
+
+	// 销毁碰撞箱
+	inline void destroy_collision_box(CollisionBox* collision_box)
+	{
+		collision_box_list.erase(std::remove(collision_box_list.begin(),
+			collision_box_list.end(), collision_box), collision_box_list.end());
+		delete collision_box;
+	}
+
+	// 处理碰撞检测
+	inline void process_collide()
+	{
+		for (auto collision_box_src : collision_box_list)
+		{
+			if (!collision_box_src->enabled || collision_box_src->layer_dst == CollisionLayer::None)
+				continue;
+
+			for (auto collision_box_dst : collision_box_list)
+			{
+				if (!collision_box_dst->enabled || collision_box_src == collision_box_dst
+					|| collision_box_src->layer_dst != collision_box_dst->layer_src)
+					continue;
+
+				// 横向碰撞条件：两碰撞箱的maxX - 两碰撞箱的minX <= 两碰撞箱的宽度之和
+				float max_x = std::max(collision_box_src->position.x + collision_box_src->size.width, collision_box_dst->position.x + collision_box_dst->size.width);
+				float min_x = std::min(collision_box_src->position.x, collision_box_dst->position.x);
+				bool is_collide_x = (max_x - min_x <= collision_box_src->size.width + collision_box_dst->size.width);
+
+				// 纵向碰撞条件：两碰撞箱的maxY - 两碰撞箱的minY <= 两碰撞箱的高度之和
+				float max_y = std::max(collision_box_src->position.y + collision_box_src->size.height, collision_box_dst->position.y + collision_box_dst->size.height);
+				float min_y = std::min(collision_box_src->position.y, collision_box_dst->position.y);
+				bool is_collide_y = (max_y - min_y <= collision_box_src->size.height + collision_box_dst->size.height);
+				
+				// 如果横向/纵向都成立，且目标碰撞箱存在回调函数，则执行回调函数
+				if (is_collide_x && is_collide_y && collision_box_dst->on_collide)
+					collision_box_dst->on_collide();
+			}
+		}
+	}
+	
+	// 调试碰撞箱
+	inline void debug_collision_box(const Camera& camera)
+	{
+		for (auto collision_box : collision_box_list)
+		{
+			// 定义碰撞箱渲染矩形
+			SDL_FRect rect_dst = { collision_box->position.x, collision_box->position.y,
+				collision_box->size.width, collision_box->size.height };
+
+			// 定义碰撞箱渲染颜色
+			SDL_Color color;
+			if (collision_box->enabled)
+				color = { 255,195,195,255 };
+			else
+				color = { 115,155,175,255 };
+
+			camera.render_shape(&rect_dst, color, false);	// 绘制碰撞箱
+		}
+	}
+
+private:
+	CollisionManager() = default;
+	~CollisionManager() = default;
+
+private:
+	static CollisionManager* m_instance;			// 碰撞管理器单例
+	std::vector<CollisionBox*> collision_box_list;	// 碰撞箱列表
+};
+inline CollisionManager* CollisionManager::m_instance = nullptr;
