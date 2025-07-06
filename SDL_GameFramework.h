@@ -24,13 +24,13 @@ inline SDL_Window* Main_Window = nullptr;				// 主窗口
 inline SDL_Renderer* Main_Renderer = nullptr;			// 主渲染器
 inline TTF_TextEngine* Main_TextEngine = nullptr;		// 主文字引擎
 
-constexpr float PAI = 3.14159265f;							// 圆周率
-constexpr SDL_Color Color_Red = { 255, 0, 0, 255 };			// 红
-constexpr SDL_Color Color_Blue = { 0, 0, 255, 255 };		// 蓝
-constexpr SDL_Color Color_Green = { 0, 255, 0, 255 };		// 绿
-constexpr SDL_Color Color_White = { 255, 255, 255, 255 };	// 白
-constexpr SDL_Color Color_Black = { 0, 0, 0, 255 };			// 黑
-constexpr SDL_Color Color_Gray = { 128, 128, 128, 255 };	// 灰
+constexpr float PAI = 3.14159265f;						// 圆周率
+constexpr SDL_Color Red = { 255, 0, 0, 255 };			// 红
+constexpr SDL_Color Blue = { 0, 0, 255, 255 };			// 蓝
+constexpr SDL_Color Green = { 0, 255, 0, 255 };			// 绿
+constexpr SDL_Color White = { 255, 255, 255, 255 };		// 白
+constexpr SDL_Color Black = { 0, 0, 0, 255 };			// 黑
+constexpr SDL_Color Gray = { 128, 128, 128, 255 };		// 灰
 
 constexpr SDL_InitFlags SDL_INIT_EVERYTHING = (SDL_INIT_AUDIO | SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_JOYSTICK | SDL_INIT_HAPTIC | SDL_INIT_GAMEPAD | SDL_INIT_SENSOR);
 constexpr MIX_InitFlags MIX_INIT_EVERYTHING = (MIX_INIT_MP3 | MIX_INIT_FLAC | MIX_INIT_MID | MIX_INIT_MOD | MIX_INIT_OGG | MIX_INIT_OPUS | MIX_INIT_WAVPACK);
@@ -40,7 +40,7 @@ constexpr MIX_InitFlags MIX_INIT_EVERYTHING = (MIX_INIT_MP3 | MIX_INIT_FLAC | MI
 // ==============================================================================================
 
 // 初始化SDL相关设置
-inline void Framework_init()
+inline void FCE_init()
 {
 	SDL_Init(SDL_INIT_EVERYTHING);
 	TTF_Init();
@@ -52,7 +52,7 @@ inline void Framework_init()
 }
 
 // 初始化内置窗口
-inline void Framework_Init_Window(const char* title, int width, int height, SDL_WindowFlags flags)
+inline void FCE_Init_Window(const char* title, int width, int height, SDL_WindowFlags flags)
 {
 	if (Main_Window) return;	// 如果窗口已存在则不再创建
 	Main_Window = SDL_CreateWindow(title, width, height, flags);
@@ -61,7 +61,7 @@ inline void Framework_Init_Window(const char* title, int width, int height, SDL_
 }
 
 // 初始化内置渲染器
-inline void Framework_Init_Renderer(const char* name = nullptr)
+inline void FCE_Init_Renderer(const char* name = nullptr)
 {
 	if (Main_Renderer) return;	// 如果渲染器已存在则不再创建
 	Main_Renderer = SDL_CreateRenderer(Main_Window, name);
@@ -70,7 +70,7 @@ inline void Framework_Init_Renderer(const char* name = nullptr)
 }
 
 // 初始化内置文字引擎
-inline void Framework_Init_TextEngine()
+inline void FCE_Init_TextEngine()
 {
 	if (Main_TextEngine) return; // 如果文字引擎已存在则不再创建
 	Main_TextEngine = TTF_CreateRendererTextEngine(Main_Renderer);
@@ -79,7 +79,7 @@ inline void Framework_Init_TextEngine()
 }
 
 // 释放框架内置资源 [包含：Main_TextEngine、Main_Renderer、Main_Window]
-inline void Framework_Clean_Up()
+inline void FCE_Clean_Up()
 {
 	if (Main_TextEngine)
 	{
@@ -99,7 +99,7 @@ inline void Framework_Clean_Up()
 }
 
 // 绘制空心圆
-inline void Framework_Draw_Circle(SDL_Renderer* renderer, float centerX, float centerY, float radius)
+inline void FCE_Draw_Circle(SDL_Renderer* renderer, float centerX, float centerY, float radius)
 {
 	float x = radius; float y = 0; float err = 0;
 	while (x >= y)
@@ -119,7 +119,7 @@ inline void Framework_Draw_Circle(SDL_Renderer* renderer, float centerX, float c
 }
 
 // 绘制实心圆
-inline void Framework_Draw_FilledCircle(SDL_Renderer* renderer, float centerX, float centerY, float radius)
+inline void FCE_Draw_FilledCircle(SDL_Renderer* renderer, float centerX, float centerY, float radius)
 {
 	for (float y = -radius; y <= radius; y += 1.0f)
 	{
@@ -129,7 +129,7 @@ inline void Framework_Draw_FilledCircle(SDL_Renderer* renderer, float centerX, f
 }
 
 // ==============================================================================================
-//				基 础 工 具						Base	Kits
+//				基 础 类 型								Base	Type
 // ==============================================================================================
 
 // 大小
@@ -189,6 +189,47 @@ public:
 		return Vector2(x / len, y / len);
 	}
 };
+
+// 渲染层级
+enum class RenderLayer
+{
+	None,			// 无渲染层
+	Background,		// 背景层
+	GameObject,		// 游戏元素层
+	Effect,			// 特效层
+	Frontground,	// 前景层
+	UI				// UI层
+};
+
+// 碰撞层级
+enum class CollisionLayer
+{
+	None = 0,				// 无碰撞层
+	Player = 1 << 0,		// 玩家层
+	Enemy = 1 << 1,			// 敌人层
+	GameMap = 1 << 2,		// 游戏地图层
+	GameObject = 1 << 3,	// 游戏元素层
+	Attack = 1 << 4,		// 攻击层
+	UI = 1 << 5				// UI层
+};
+
+// 重载按位或运算符 |
+constexpr CollisionLayer operator|(CollisionLayer lhs, CollisionLayer rhs)
+{
+	using underlying = std::underlying_type_t<CollisionLayer>;
+	return static_cast<CollisionLayer>(static_cast<underlying>(lhs) | static_cast<underlying>(rhs));
+}
+
+// 重载按位与运算符 &
+constexpr bool operator&(CollisionLayer lhs, CollisionLayer rhs)
+{
+	using underlying = std::underlying_type_t<CollisionLayer>;
+	return (static_cast<underlying>(lhs) & static_cast<underlying>(rhs)) != 0;
+}
+
+// ==============================================================================================
+//				基 础 工 具								Base	Kits
+// ==============================================================================================
 
 // 进程错误处理
 class custom_runtime_error
@@ -280,7 +321,7 @@ public:
 	void start_frame()
 	{
 		auto currentTime = steady_clock::now();
-		delta_time = duration_cast<milliseconds>(currentTime - last_time).count();
+		delta_time = static_cast<float>(duration_cast<milliseconds>(currentTime - last_time).count());
 		last_time = currentTime;
 	}
 
@@ -428,43 +469,6 @@ namespace maths
 	}
 };
 
-// 渲染层级
-enum class RenderLayer
-{
-	None,			// 无渲染层
-	Background,		// 背景层
-	GameObject,		// 游戏元素层
-	Effect,			// 特效层
-	Frontground,	// 前景层
-	UI				// UI层
-};
-
-// 碰撞层级
-enum class CollisionLayer
-{
-	None = 0,				// 无碰撞层
-	Player = 1 << 0,		// 玩家层
-	Enemy = 1 << 1,			// 敌人层
-	GameMap = 1 << 2,		// 游戏地图层
-	GameObject = 1 << 3,	// 游戏元素层
-	Attack = 1 << 4,		// 攻击层
-	UI = 1 << 5				// UI层
-};
-
-// 重载按位或运算符 |
-constexpr CollisionLayer operator|(CollisionLayer lhs, CollisionLayer rhs)
-{
-	using underlying = std::underlying_type_t<CollisionLayer>;
-	return static_cast<CollisionLayer>(static_cast<underlying>(lhs) | static_cast<underlying>(rhs));
-}
-
-// 重载按位与运算符 &
-constexpr bool operator&(CollisionLayer lhs, CollisionLayer rhs)
-{
-	using underlying = std::underlying_type_t<CollisionLayer>;
-	return (static_cast<underlying>(lhs) & static_cast<underlying>(rhs)) != 0;
-}
-
 // =========================================================================================
 // 				基 础 元 素							 base	Elements
 // =========================================================================================
@@ -582,9 +586,9 @@ public:
 		circle_center.y = this->get_screen_center().y + (circle_center.y - position.y) * zoom;
 
 		if (is_filled)
-			Framework_Draw_FilledCircle(camera_renderer, circle_center.x, circle_center.y, radius * zoom);
+			FCE_Draw_FilledCircle(camera_renderer, circle_center.x, circle_center.y, radius * zoom);
 		else
-			Framework_Draw_Circle(camera_renderer, circle_center.x, circle_center.y, radius * zoom);
+			FCE_Draw_Circle(camera_renderer, circle_center.x, circle_center.y, radius * zoom);
 	}
 
 	// 跟随角色
