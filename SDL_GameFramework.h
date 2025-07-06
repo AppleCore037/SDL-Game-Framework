@@ -39,6 +39,18 @@ constexpr MIX_InitFlags MIX_INIT_EVERYTHING = (MIX_INIT_MP3 | MIX_INIT_FLAC | MI
 //				基 础 函 数						Base	Functions
 // ==============================================================================================
 
+// 初始化SDL相关设置
+inline void Framework_init()
+{
+	SDL_Init(SDL_INIT_EVERYTHING);
+	TTF_Init();
+
+	SDL_AudioSpec spec{ SDL_AUDIO_S16, 2, 44100 };
+	Mix_Init(MIX_INIT_EVERYTHING);
+	Mix_OpenAudio(NULL, &spec);
+	Mix_Volume(-1, MIX_MAX_VOLUME);
+}
+
 // 初始化内置窗口
 inline void Framework_Init_Window(const char* title, int width, int height, SDL_WindowFlags flags)
 {
@@ -424,9 +436,23 @@ enum class CollisionLayer
 	Enemy = 1 << 1,			// 敌人层
 	GameMap = 1 << 2,		// 游戏地图层
 	GameObject = 1 << 3,	// 游戏元素层
-	Weapon = 1 << 4,		// 武器层
+	Attack = 1 << 4,		// 攻击层
 	UI = 1 << 5				// UI层
 };
+
+// 重载按位或运算符 |
+constexpr CollisionLayer operator|(CollisionLayer lhs, CollisionLayer rhs)
+{
+	using underlying = std::underlying_type_t<CollisionLayer>;
+	return static_cast<CollisionLayer>(static_cast<underlying>(lhs) | static_cast<underlying>(rhs));
+}
+
+// 重载按位与运算符 &
+constexpr bool operator&(CollisionLayer lhs, CollisionLayer rhs)
+{
+	using underlying = std::underlying_type_t<CollisionLayer>;
+	return (static_cast<underlying>(lhs) & static_cast<underlying>(rhs)) != 0;
+}
 
 // =========================================================================================
 // 				基 础 元 素							 base	Elements
@@ -741,7 +767,7 @@ public:
 	void set_layer_dst(CollisionLayer layer) { this->layer_dst = layer; }
 
 	// 设置碰撞回调函数
-	void set_on_collide(std::function<void()> callback) { this->on_collide = callback; }
+	void set_on_collide(std::function<void(CollisionLayer)> callback) { this->on_collide = callback; }
 
 	// 设置碰撞箱大小
 	void set_size(const Size& size) { this->size = size; }
@@ -756,7 +782,7 @@ private:
 	Size size = { 0, 0 };								// 碰撞箱大小
 	Vector2 position;									// 碰撞箱位置
 	bool enabled = true;								// 是否启用碰撞检测
-	std::function<void()> on_collide;					// 碰撞回调函数
+	std::function<void(CollisionLayer)> on_collide;		// 碰撞回调函数
 	CollisionLayer layer_src = CollisionLayer::None;	// 自身碰撞层
 	CollisionLayer layer_dst = CollisionLayer::None;	// 目标碰撞层
 
@@ -781,26 +807,20 @@ public:
 	virtual void on_update(float delta) = 0;
 	virtual void on_render(const Camera& camera) = 0;
 	virtual void on_input(const SDL_Event& event) = 0;
+	virtual void reset_property() = 0;
 
 protected:
 	Vector2 position;						// 位置
 	Vector2 velocity;						// 速度
-	CollisionBox* collision_box = nullptr;	// 碰撞箱
+	CollisionBox* self_hitBox = nullptr;	// 自身碰撞箱
 };
 
 // 场景抽象基类
 class Scene
 {
 public:
-	Scene() = default;	// 构造函数处初始化实例化对象
-
-	// 析函数出释放实例化对象
-	virtual ~Scene()
-	{
-		for(auto& sprite: sprite_pool)
-			delete sprite.second;
-		sprite_pool.clear();
-	}
+	Scene() = default;			// 构造函数处初始化实例化对象
+	virtual ~Scene() = default;	// 析函数出释放实例化对象
 
 	// 获取精灵
 	template <typename _CvtTy>
@@ -818,18 +838,31 @@ public:
 	virtual void on_exit() = 0;							// 退出场景（尽量不要销毁对象）
 	
 protected:
+	// 清空精灵池所有精灵
+	void release_all()
+	{
+		for (auto& sprite : sprite_pool)
+			delete sprite.second;
+		sprite_pool.clear();
+	}
+
+protected:
 	std::unordered_map<std::string, Sprite*> sprite_pool;	// 精灵池
 };
 
 // 按钮（仅适用与UI层）
 class Button
 {
+	using effect_pair = std::pair<SDL_Texture*, Mix_Chunk*>;
 public:
 	Button() = default;
-	Button(const Vector2& pos, const Size& size)
-		: position(pos), size(size) {}
-
 	~Button() = default;
+	Button(const Vector2& pos, const Size& size) : position(pos), size(size)
+	{
+		this->effects["normal"] = std::make_pair(nullptr, nullptr);
+		this->effects["hover"] = std::make_pair(nullptr, nullptr);
+		this->effects["click"] = std::make_pair(nullptr, nullptr);
+	}
 
 	// 设置位置
 	void set_position(const Vector2& pos) { this->position = pos; }
@@ -853,10 +886,17 @@ public:
 		if (!normal || !hover || !click)
 			throw custom_runtime_error(u8"Button Argument Error", u8"Argument texture cannot be nullptr!");
 
-		this->tex_normal = normal;
-		this->tex_hover = hover;
-		this->tex_click = click;
-		this->current_texture = tex_normal;	// 默认显示正常状态纹理
+		effects["normal"].first = normal;
+		effects["hover"].first = hover;
+		effects["click"].first = click;
+		this->current_texture = effects["normal"].first;	// 默认显示正常状态纹理
+	}
+
+	// 设置按钮音效（分别为：悬停、被点击）
+	void set_audio(Mix_Chunk* hover, Mix_Chunk* click)
+	{
+		effects["hover"].second = hover;
+		effects["click"].second = click;
 	}
 
 	// 渲染按钮
@@ -877,12 +917,17 @@ public:
 		{
 			if (in_range_x && in_range_y)
 			{
-				this->current_texture = tex_hover;
+				if(effects["hover"].second && !is_hovering)
+					Mix_PlayChannel(-1, effects["hover"].second, 0);
+
+				this->is_hovering = true;
+				this->current_texture = effects["hover"].first;
 				SDL_SetCursor(SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_POINTER));
 			}
 			else
 			{
-				this->current_texture = tex_normal;
+				this->is_hovering = false;
+				this->current_texture = effects["normal"].first;
 				SDL_SetCursor(SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_DEFAULT));
 			}
 		}
@@ -890,29 +935,29 @@ public:
 		{
 			if (in_range_x && in_range_y)
 			{
-				this->current_texture = tex_click;
+				if(effects["click"].second)
+					Mix_PlayChannel(-1, effects["click"].second, 0);
+
+				this->current_texture = effects["click"].first;
 				this->on_click();
 			}
 		}
 		if (event.type == SDL_EVENT_MOUSE_BUTTON_UP && event.button.button == SDL_BUTTON_LEFT) // 按钮被释放
 		{
 			if (in_range_x && in_range_y)
-				this->current_texture = tex_hover;
+				this->current_texture = effects["hover"].first;
 			else
-				this->current_texture = tex_normal;
+				this->current_texture = effects["normal"].first;
 		}
 	}
 
 private:
-	Vector2 position;			// 按钮位置
-	Size size;					// 按钮大小
-
-	SDL_Texture* tex_normal = nullptr;		// 正常状态纹理
-	SDL_Texture* tex_hover = nullptr;		// 悬停状态纹理
-	SDL_Texture* tex_click = nullptr;		// 按下状态纹理
-	SDL_Texture* current_texture = nullptr;	// 当前显示的纹理
-
-	std::function<void()> on_click;		// 点击回调函数
+	Vector2 position;											// 按钮位置
+	Size size;													// 按钮大小
+	bool is_hovering = false;									// 是否首次悬停
+	SDL_Texture* current_texture = nullptr;						// 当前显示的纹理
+	std::unordered_map<std::string, effect_pair> effects;		// 效果列表
+	std::function<void()> on_click;								// 点击回调函数
 };
 
 // 状态节点
@@ -1342,7 +1387,7 @@ public:
 			for (auto collision_box_dst : collision_box_list)
 			{
 				if (!collision_box_dst->enabled || collision_box_src == collision_box_dst
-					|| collision_box_src->layer_dst != collision_box_dst->layer_src)
+					|| !(collision_box_src->layer_dst & collision_box_dst->layer_src))
 					continue;
 
 				// 横向碰撞条件：两碰撞箱的maxX - 两碰撞箱的minX <= 两碰撞箱的宽度之和
@@ -1357,7 +1402,7 @@ public:
 				
 				// 如果横向/纵向都成立，且目标碰撞箱存在回调函数，则执行回调函数
 				if (is_collide_x && is_collide_y && collision_box_dst->on_collide)
-					collision_box_dst->on_collide();
+					collision_box_dst->on_collide(collision_box_src->layer_src);
 			}
 		}
 	}
