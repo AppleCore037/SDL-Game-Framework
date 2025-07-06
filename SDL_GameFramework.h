@@ -428,6 +428,17 @@ namespace maths
 	}
 };
 
+// 渲染层级
+enum class RenderLayer
+{
+	None,			// 无渲染层
+	Background,		// 背景层
+	GameObject,		// 游戏元素层
+	Effect,			// 特效层
+	Frontground,	// 前景层
+	UI				// UI层
+};
+
 // 碰撞层级
 enum class CollisionLayer
 {
@@ -804,54 +815,26 @@ public:
 	// 设置位置
 	void set_position(const Vector2& pos) { this->position = pos; }
 
-	virtual void on_update(float delta) = 0;
-	virtual void on_render(const Camera& camera) = 0;
-	virtual void on_input(const SDL_Event& event) = 0;
-	virtual void reset_property() = 0;
+	// 设置渲染层
+	void set_render_layer(RenderLayer layer) { this->render_layer = layer; }
+
+	// 获取渲染层
+	RenderLayer get_render_layer() const { return this->render_layer; }
+
+	virtual void on_update(float delta) {}
+	virtual void on_render(const Camera& camera) {}
+	virtual void on_input(const SDL_Event& event) {}
+	virtual void reset_property() {}
 
 protected:
-	Vector2 position;						// 位置
-	Vector2 velocity;						// 速度
-	CollisionBox* self_hitBox = nullptr;	// 自身碰撞箱
-};
-
-// 场景抽象基类
-class Scene
-{
-public:
-	Scene() = default;			// 构造函数处初始化实例化对象
-	virtual ~Scene() = default;	// 析函数出释放实例化对象
-
-	// 获取精灵
-	template <typename _CvtTy>
-	_CvtTy* find_sprite(const std::string& name)
-	{
-		if (sprite_pool.find(name) == sprite_pool.end())
-			throw custom_runtime_error(u8"SceneManager Error", u8"Sprite “" + name + u8"” is not found!");
-		return (_CvtTy*)sprite_pool[name];
-	}
-
-	virtual void on_enter() = 0;						// 进入场景（尽量不要创建新对象，而是对角色属性的重置）
-	virtual void on_update(float delta) = 0;			// 更新场景
-	virtual void on_render(const Camera& camera) = 0;	// 渲染场景
-	virtual void on_input(const SDL_Event& event) = 0;	// 输入事件处理
-	virtual void on_exit() = 0;							// 退出场景（尽量不要销毁对象）
-	
-protected:
-	// 清空精灵池所有精灵
-	void release_all()
-	{
-		for (auto& sprite : sprite_pool)
-			delete sprite.second;
-		sprite_pool.clear();
-	}
-
-protected:
-	std::unordered_map<std::string, Sprite*> sprite_pool;	// 精灵池
+	Vector2 position;								// 位置
+	Vector2 velocity;								// 速度
+	CollisionBox* self_hitBox = nullptr;			// 自身碰撞箱
+	RenderLayer render_layer = RenderLayer::None;	// 渲染层
 };
 
 // 按钮（仅适用与UI层）
-class Button
+class Button : public Sprite
 {
 	using effect_pair = std::pair<SDL_Texture*, Mix_Chunk*>;
 public:
@@ -859,16 +842,11 @@ public:
 	~Button() = default;
 	Button(const Vector2& pos, const Size& size) : position(pos), size(size)
 	{
+		this->render_layer = RenderLayer::UI;
 		this->effects["normal"] = std::make_pair(nullptr, nullptr);
 		this->effects["hover"] = std::make_pair(nullptr, nullptr);
 		this->effects["click"] = std::make_pair(nullptr, nullptr);
 	}
-
-	// 设置位置
-	void set_position(const Vector2& pos) { this->position = pos; }
-
-	// 获取位置
-	const Vector2& get_position() const { return this->position; }
 
 	// 设置大小
 	void set_size(const Size& size) { this->size = size; }
@@ -900,15 +878,15 @@ public:
 	}
 
 	// 渲染按钮
-	void on_render(SDL_Renderer* renderer, double angle, SDL_FPoint* center)
+	void on_render(const Camera&) override
 	{
 		if (!current_texture) return;	// 如果没有设置纹理则不渲染
 		SDL_FRect rect_dst_win = { position.x, position.y, size.width, size.height };
-		SDL_RenderTextureRotated(renderer, current_texture, nullptr, &rect_dst_win, angle, center, SDL_FLIP_NONE);
+		SDL_RenderTextureRotated(Main_Renderer, current_texture, nullptr, &rect_dst_win, 0, nullptr, SDL_FLIP_NONE);
 	}
 
 	// 处理输入事件
-	void on_input(const SDL_Event& event)
+	void on_input(const SDL_Event& event) override
 	{
 		bool in_range_x = event.button.x >= position.x && event.button.x <= position.x + size.width;
 		bool in_range_y = event.button.y >= position.y && event.button.y <= position.y + size.height;
@@ -917,7 +895,7 @@ public:
 		{
 			if (in_range_x && in_range_y)
 			{
-				if(effects["hover"].second && !is_hovering)
+				if (effects["hover"].second && !is_hovering)
 					Mix_PlayChannel(-1, effects["hover"].second, 0);
 
 				this->is_hovering = true;
@@ -935,7 +913,7 @@ public:
 		{
 			if (in_range_x && in_range_y)
 			{
-				if(effects["click"].second)
+				if (effects["click"].second)
 					Mix_PlayChannel(-1, effects["click"].second, 0);
 
 				this->current_texture = effects["click"].first;
@@ -958,6 +936,74 @@ private:
 	SDL_Texture* current_texture = nullptr;						// 当前显示的纹理
 	std::unordered_map<std::string, effect_pair> effects;		// 效果列表
 	std::function<void()> on_click;								// 点击回调函数
+};
+
+// 场景抽象基类
+class Scene
+{
+public:
+	Scene() = default;			// 构造函数处初始化实例化对象
+	virtual ~Scene() = default;	// 析函数出释放实例化对象
+
+	// 获取精灵
+	template <typename _CvtTy>
+	_CvtTy* find_sprite(const std::string& name)
+	{
+		if (sprite_pool.find(name) == sprite_pool.end())
+			throw custom_runtime_error(u8"SceneManager Error", u8"Sprite “" + name + u8"” is not found!");
+		return (_CvtTy*)sprite_pool[name];
+	}
+
+	virtual void on_enter() = 0;						// 进入场景（尽量不要创建新对象，而是对角色属性的重置）
+	virtual void on_update(float delta) = 0;			// 更新场景
+	virtual void on_render(const Camera& camera) = 0;	// 渲染场景
+	virtual void on_input(const SDL_Event& event) = 0;	// 输入事件处理
+	virtual void on_exit() = 0;							// 退出场景（尽量不要销毁对象）
+	
+protected:
+	// 处理精灵渲染
+	void render_sprite(const Camera& camera)
+	{
+		for (auto& sprite : sprite_pool)
+			sprite.second->on_render(camera);
+	}
+
+	// 处理精灵事件
+	void input_sprite(const SDL_Event& event)
+	{
+		for (auto& sprite : sprite_pool)
+			sprite.second->on_input(event);
+	}
+
+	// 处理精灵数据
+	void update_sprite(float delta)
+	{
+		using _Ty = std::pair<std::string, Sprite*>;
+		std::vector<_Ty> sprite_vec(sprite_pool.begin(), sprite_pool.end());
+
+		// 对节点先按层级，再按照Y坐标进行排序
+		std::sort(sprite_vec.begin(), sprite_vec.end(), [](_Ty& a, _Ty& b) -> bool
+			{
+				if (a.second->get_render_layer() == b.second->get_render_layer())
+					return a.second->get_position().y < b.second->get_position().y;
+				else
+					return a.second->get_render_layer() < b.second->get_render_layer();
+			});
+
+		for (auto& sprite : sprite_vec)
+			sprite.second->on_update(delta);
+	}
+
+	// 清空精灵池所有精灵
+	void release_all()
+	{
+		for (auto& sprite : sprite_pool)
+			delete sprite.second;
+		sprite_pool.clear();
+	}
+
+protected:
+	std::unordered_map<std::string, Sprite*> sprite_pool;	// 精灵池
 };
 
 // 状态节点
