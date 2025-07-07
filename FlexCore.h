@@ -40,7 +40,7 @@ constexpr MIX_InitFlags MIX_INIT_EVERYTHING = (MIX_INIT_MP3 | MIX_INIT_FLAC | MI
 // ==============================================================================================
 
 // 初始化SDL相关设置
-inline void FCE_init()
+inline void FCE_Init()
 {
 	SDL_Init(SDL_INIT_EVERYTHING);
 	TTF_Init();
@@ -188,6 +188,16 @@ public:
 			return Vector2(0, 0);
 		return Vector2(x / len, y / len);
 	}
+};
+
+// 文字属性
+struct TextProps
+{
+	Vector2 position;		// 位置
+	float ptsize;			// 大小
+	TTF_Font* font;			// 字体样式
+	SDL_Color color;		// 颜色
+	std::string text_info;	// 文字内容
 };
 
 // 渲染层级
@@ -488,11 +498,8 @@ public:
 	};
 
 public:
-	Camera(SDL_Window* window, SDL_Renderer* renderer)
+	Camera()
 	{
-		this->camera_window = window;
-		this->camera_renderer = renderer;
-
 		timer_shake.set_one_shot(true);
 		timer_shake.set_on_timeout([&]()
 			{
@@ -545,25 +552,25 @@ public:
 		rect_dst_win.w = rect_dst->w * zoom;
 		rect_dst_win.h = rect_dst->h * zoom;
 
-		SDL_RenderTextureRotated(camera_renderer, texture, rect_src, &rect_dst_win, angle, center,
+		SDL_RenderTextureRotated(Main_Renderer, texture, rect_src, &rect_dst_win, angle, center,
 			is_flip ? SDL_FLIP_HORIZONTAL : SDL_FLIP_NONE);
 	}
 
 	// 绘制线段
 	void render_shape(const Vector2& start, const Vector2& end, SDL_Color color) const
 	{
-		SDL_SetRenderDrawColor(camera_renderer, color.r, color.g, color.b, color.a);
+		SDL_SetRenderDrawColor(Main_Renderer, color.r, color.g, color.b, color.a);
 
 		Vector2 start_win = { get_screen_center().x + (start.x - position.x) * zoom, get_screen_center().y + (start.y - position.y) * zoom };
 		Vector2 end_win = { get_screen_center().x + (end.x - position.x) * zoom, get_screen_center().y + (end.y - position.y) * zoom };
 
-		SDL_RenderLine(camera_renderer, start_win.x, start_win.y, end_win.x, end_win.y);
+		SDL_RenderLine(Main_Renderer, start_win.x, start_win.y, end_win.x, end_win.y);
 	}
 
 	// 绘制矩形
 	void render_shape(const SDL_FRect* rect, SDL_Color color, bool is_filled) const
 	{
-		SDL_SetRenderDrawColor(camera_renderer, color.r, color.g, color.b, color.a);
+		SDL_SetRenderDrawColor(Main_Renderer, color.r, color.g, color.b, color.a);
 
 		SDL_FRect rect_dst_win = *rect;
 		rect_dst_win.w *= zoom; rect_dst_win.h *= zoom;		// 缩放大小
@@ -571,24 +578,38 @@ public:
 		rect_dst_win.y = this->get_screen_center().y + (rect_dst_win.y - position.y) * zoom;
 
 		if(is_filled)
-			SDL_RenderFillRect(camera_renderer, &rect_dst_win);
+			SDL_RenderFillRect(Main_Renderer, &rect_dst_win);
 		else
-			SDL_RenderRect(camera_renderer, &rect_dst_win);
+			SDL_RenderRect(Main_Renderer, &rect_dst_win);
 	}
 
 	// 绘制圆形
 	void render_shape(const Vector2& pos, float radius, SDL_Color color, bool is_filled) const
 	{
-		SDL_SetRenderDrawColor(camera_renderer, color.r, color.g, color.b, color.a);
+		SDL_SetRenderDrawColor(Main_Renderer, color.r, color.g, color.b, color.a);
 
 		Vector2 circle_center = { pos.x + radius, pos.y + radius };
 		circle_center.x = this->get_screen_center().x + (circle_center.x - position.x) * zoom;
 		circle_center.y = this->get_screen_center().y + (circle_center.y - position.y) * zoom;
 
 		if (is_filled)
-			FCE_Draw_FilledCircle(camera_renderer, circle_center.x, circle_center.y, radius * zoom);
+			FCE_Draw_FilledCircle(Main_Renderer, circle_center.x, circle_center.y, radius * zoom);
 		else
-			FCE_Draw_Circle(camera_renderer, circle_center.x, circle_center.y, radius * zoom);
+			FCE_Draw_Circle(Main_Renderer, circle_center.x, circle_center.y, radius * zoom);
+	}
+
+	// 渲染文字
+	void render_text(TextProps props)
+	{
+		TTF_Text* text_win = TTF_CreateText(Main_TextEngine, props.font, props.text_info.c_str(), NULL);
+		TTF_SetTextColor(text_win, props.color.r, props.color.g, props.color.b, props.color.a);
+
+		Vector2 position_win;
+		position_win.x = this->get_screen_center().x + (props.position.x - position.x) * zoom;
+		position_win.y = this->get_screen_center().y + (props.position.y - position.y) * zoom;
+		TTF_SetFontSize(props.font, props.ptsize * zoom);
+
+		TTF_DrawRendererText(text_win, position_win.x, position_win.y);
 	}
 
 	// 跟随角色
@@ -640,7 +661,7 @@ private:
 	Vector2 get_screen_center() const
 	{
 		int screen_w, screen_h;
-		SDL_GetWindowSize(camera_window, &screen_w, &screen_h);		// 计算屏幕宽高
+		SDL_GetWindowSize(Main_Window, &screen_w, &screen_h);		// 计算屏幕宽高
 		Vector2 screen_center = Vector2(screen_w / 2.0f, screen_h / 2.0f);	// 获取屏幕中心点
 		return screen_center;
 	}
@@ -656,9 +677,7 @@ private:
 	float smooth_strength = 0;			// 平滑幅度
 	float zoom = 1.0f;					// 摄像机缩放
 
-	SDL_Window* camera_window = nullptr;		// 摄像机窗口
-	SDL_Renderer* camera_renderer = nullptr;	// 摄像机渲染器
-	const float SMOOTH_FACTOR = 1.5f;			// 平滑系数
+	const float SMOOTH_FACTOR = 1.5f;	// 平滑系数
 };
 
 // 序列帧动画
@@ -766,8 +785,8 @@ private:
 	std::function<void()> on_finished;	// 动画播放完毕回调函数
 };
 
-class CollisionManager;
 // 碰撞箱
+class CollisionManager;
 class CollisionBox
 {
 	friend class CollisionManager;
@@ -968,7 +987,19 @@ protected:
 	// 处理精灵渲染
 	void render_sprite(const Camera& camera)
 	{
-		for (auto& sprite : sprite_pool)
+		using _STy = std::pair<std::string, Sprite*>;
+		std::vector<_STy> sprite_vec(sprite_pool.begin(), sprite_pool.end());
+
+		// 对节点先按层级，再按照Y坐标进行排序
+		std::sort(sprite_vec.begin(), sprite_vec.end(), [](_STy& a, _STy& b) -> bool
+			{
+				if (a.second->get_render_layer() == b.second->get_render_layer())
+					return a.second->get_position().y < b.second->get_position().y;
+				else
+					return a.second->get_render_layer() < b.second->get_render_layer();
+			});
+
+		for (auto& sprite : sprite_vec)
 			sprite.second->on_render(camera);
 	}
 
@@ -982,19 +1013,7 @@ protected:
 	// 处理精灵数据
 	void update_sprite(float delta)
 	{
-		using _Ty = std::pair<std::string, Sprite*>;
-		std::vector<_Ty> sprite_vec(sprite_pool.begin(), sprite_pool.end());
-
-		// 对节点先按层级，再按照Y坐标进行排序
-		std::sort(sprite_vec.begin(), sprite_vec.end(), [](_Ty& a, _Ty& b) -> bool
-			{
-				if (a.second->get_render_layer() == b.second->get_render_layer())
-					return a.second->get_position().y < b.second->get_position().y;
-				else
-					return a.second->get_render_layer() < b.second->get_render_layer();
-			});
-
-		for (auto& sprite : sprite_vec)
+		for (auto& sprite : sprite_pool)
 			sprite.second->on_update(delta);
 	}
 
