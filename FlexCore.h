@@ -39,16 +39,15 @@ constexpr MIX_InitFlags MIX_INIT_EVERYTHING = (MIX_INIT_MP3 | MIX_INIT_FLAC | MI
 //				基 础 函 数						Base	Functions
 // ==============================================================================================
 
-// 初始化SDL相关设置
+// 初始化
 inline void FCE_Init()
 {
 	SDL_Init(SDL_INIT_EVERYTHING);
 	TTF_Init();
 
-	SDL_AudioSpec spec{ SDL_AUDIO_S16, 2, 44100 };
+	SDL_AudioSpec spec = { SDL_AUDIO_S16, 2, 44100 };
 	Mix_Init(MIX_INIT_EVERYTHING);
 	Mix_OpenAudio(NULL, &spec);
-	Mix_Volume(-1, MIX_MAX_VOLUME);
 }
 
 // 初始化内置窗口
@@ -190,7 +189,8 @@ public:
 	}
 };
 
-// 文字属性
+/*文字属性
+包括：位置、字体像素大小、字体样式、颜色、文本内容*/
 struct TextProps
 {
 	Vector2 position;		// 位置
@@ -220,7 +220,6 @@ enum class CollisionLayer
 	GameMap = 1 << 2,		// 游戏地图层
 	GameObject = 1 << 3,	// 游戏元素层
 	Attack = 1 << 4,		// 攻击层
-	UI = 1 << 5				// UI层
 };
 
 // 重载按位或运算符 |
@@ -599,7 +598,7 @@ public:
 	}
 
 	// 渲染文字
-	void render_text(TextProps props)
+	void render_text(TextProps props) const
 	{
 		TTF_Text* text_win = TTF_CreateText(Main_TextEngine, props.font, props.text_info.c_str(), NULL);
 		TTF_SetTextColor(text_win, props.color.r, props.color.g, props.color.b, props.color.a);
@@ -856,7 +855,7 @@ protected:
 	RenderLayer render_layer = RenderLayer::None;	// 渲染层
 };
 
-// 按钮（仅适用与UI层）
+// 按钮（仅适用与UI层
 class Button : public Sprite
 {
 	using effect_pair = std::pair<SDL_Texture*, Mix_Chunk*>;
@@ -1238,10 +1237,15 @@ public:
 					SDL_Texture* texture = IMG_LoadTexture(renderer, path.u8string().c_str());
 					texture_pool[path.stem().u8string()] = texture;
 				}
-				if (path.extension() == ".wav" || path.extension() == ".mp3" || path.extension() == ".ogg")
+				if (path.extension() == ".wav")
 				{
 					Mix_Chunk* audio = Mix_LoadWAV(path.u8string().c_str());
 					audio_pool[path.stem().u8string()] = audio;
+				}
+				if (path.extension() == ".mp3" || path.extension() == ".ogg")
+				{
+					Mix_Music* music = Mix_LoadMUS(path.u8string().c_str());
+					music_pool[path.stem().u8string()] = music;
 				}
 				if (path.extension() == ".ttf" || path.extension() == ".TTF")
 				{
@@ -1278,6 +1282,19 @@ public:
 		return audio_pool[name];
 	}
 
+	// 查找音乐资源
+	inline Mix_Music* find_music(const std::string& name)
+	{
+		// 未找到
+		if (music_pool.find(name) == music_pool.end())
+		{
+			std::string info = u8"Music “" + name + u8"” is not found!";
+			throw custom_runtime_error(u8"ResourcesManager Error", info);
+		}
+
+		return music_pool[name];
+	}
+
 	// 查找字体资源
 	inline TTF_Font* find_font(const std::string& name)
 	{
@@ -1302,6 +1319,8 @@ public:
 		printf("\n已加载的音频资源如下 (共%d个):\n", (int)audio_pool.size());
 		for (auto& audio : audio_pool)
 			printf("%s\n", audio.first.c_str());
+		for (auto& music : music_pool)
+			printf("%s\n", music.first.c_str());
 
 		printf("\n已加载的字体资源如下 (共%d个):\n", (int)font_pool.size());
 		for (auto& font : font_pool)
@@ -1315,8 +1334,10 @@ private:
 
 private:
 	static ResourcesManager* m_instance;								// 资源管理器单例
+
 	std::unordered_map<std::string, SDL_Texture*> texture_pool;			// 纹理资源池
 	std::unordered_map<std::string, Mix_Chunk*> audio_pool;				// 音频资源池
+	std::unordered_map<std::string, Mix_Music*> music_pool;				// 音乐资源池
 	std::unordered_map<std::string, TTF_Font*> font_pool;				// 字体资源池
 };
 inline ResourcesManager* ResourcesManager::m_instance = nullptr;
