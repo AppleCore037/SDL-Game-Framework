@@ -1,4 +1,4 @@
-# SDL-Game-Framework
+# FlexCore
 依托SDL3的游戏开发框架 / Game development framework based on SDL3
 
 注意： 需要配置SDL3相关文件、需要C++17及以上版本
