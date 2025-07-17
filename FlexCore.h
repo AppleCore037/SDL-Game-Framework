@@ -1,6 +1,6 @@
 #pragma once
 
-// æ ‡å‡†åº“
+// ±ê×¼¿â
 #include <chrono>
 #include <filesystem>
 #include <functional>
@@ -10,36 +10,36 @@
 #include <thread>
 #include <unordered_map>
 
-// ç¬¬ä¸‰æ–¹åº“ï¼ˆSDLï¼‰
+// µÚÈı·½¿â£¨SDL£©
 #include <SDL3/SDL.h>
 #include <SDL3_image/SDL_image.h>
 #include <SDL3_mixer/SDL_mixer.h>
 #include <SDL3_ttf/SDL_ttf.h>
 
 // ==============================================================================================
-// 				åŸºç¡€å˜é‡å±æ€§							Base Variables Attributes
+// 				»ù´¡±äÁ¿ÊôĞÔ							Base Variables Attributes
 // ==============================================================================================
 
-inline SDL_Window* Main_Window = nullptr;				// ä¸»çª—å£
-inline SDL_Renderer* Main_Renderer = nullptr;			// ä¸»æ¸²æŸ“å™¨
-inline TTF_TextEngine* Main_TextEngine = nullptr;		// ä¸»æ–‡å­—å¼•æ“
+inline SDL_Window* Main_Window = nullptr;				// Ö÷´°¿Ú
+inline SDL_Renderer* Main_Renderer = nullptr;			// Ö÷äÖÈ¾Æ÷
+inline TTF_TextEngine* Main_TextEngine = nullptr;		// Ö÷ÎÄ×ÖÒıÇæ
 
-constexpr float PAI = 3.14159265f;						// åœ†å‘¨ç‡
-constexpr SDL_Color Red = { 255, 0, 0, 255 };			// çº¢
-constexpr SDL_Color Blue = { 0, 0, 255, 255 };			// è“
-constexpr SDL_Color Green = { 0, 255, 0, 255 };			// ç»¿
-constexpr SDL_Color White = { 255, 255, 255, 255 };		// ç™½
-constexpr SDL_Color Black = { 0, 0, 0, 255 };			// é»‘
-constexpr SDL_Color Gray = { 128, 128, 128, 255 };		// ç°
+constexpr float PAI = 3.14159265f;						// Ô²ÖÜÂÊ
+constexpr SDL_Color Red = { 255, 0, 0, 255 };			// ºì
+constexpr SDL_Color Blue = { 0, 0, 255, 255 };			// À¶
+constexpr SDL_Color Green = { 0, 255, 0, 255 };			// ÂÌ
+constexpr SDL_Color White = { 255, 255, 255, 255 };		// °×
+constexpr SDL_Color Black = { 0, 0, 0, 255 };			// ºÚ
+constexpr SDL_Color Gray = { 128, 128, 128, 255 };		// »Ò
 
 constexpr SDL_InitFlags SDL_INIT_EVERYTHING = (SDL_INIT_AUDIO | SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_JOYSTICK | SDL_INIT_HAPTIC | SDL_INIT_GAMEPAD | SDL_INIT_SENSOR);
 constexpr MIX_InitFlags MIX_INIT_EVERYTHING = (MIX_INIT_MP3 | MIX_INIT_FLAC | MIX_INIT_MID | MIX_INIT_MOD | MIX_INIT_OGG | MIX_INIT_OPUS | MIX_INIT_WAVPACK);
 
 // ==============================================================================================
-//				åŸº ç¡€ å‡½ æ•°						Base	Functions
+//				»ù ´¡ º¯ Êı						Base	Functions
 // ==============================================================================================
 
-// åˆå§‹åŒ–
+// ³õÊ¼»¯
 inline void FCE_Init()
 {
 	SDL_Init(SDL_INIT_EVERYTHING);
@@ -50,34 +50,34 @@ inline void FCE_Init()
 	Mix_OpenAudio(NULL, &spec);
 }
 
-// åˆå§‹åŒ–å†…ç½®çª—å£
+// ³õÊ¼»¯ÄÚÖÃ´°¿Ú
 inline void FCE_Init_Window(const char* title, int width, int height, SDL_WindowFlags flags)
 {
-	if (Main_Window) return;	// å¦‚æœçª—å£å·²å­˜åœ¨åˆ™ä¸å†åˆ›å»º
+	if (Main_Window) return;	// Èç¹û´°¿ÚÒÑ´æÔÚÔò²»ÔÙ´´½¨
 	Main_Window = SDL_CreateWindow(title, width, height, flags);
 	if (!Main_Window)
 		throw std::runtime_error(u8"Failed to create Main_Window!");
 }
 
-// åˆå§‹åŒ–å†…ç½®æ¸²æŸ“å™¨
+// ³õÊ¼»¯ÄÚÖÃäÖÈ¾Æ÷
 inline void FCE_Init_Renderer(const char* name = nullptr)
 {
-	if (Main_Renderer) return;	// å¦‚æœæ¸²æŸ“å™¨å·²å­˜åœ¨åˆ™ä¸å†åˆ›å»º
+	if (Main_Renderer) return;	// Èç¹ûäÖÈ¾Æ÷ÒÑ´æÔÚÔò²»ÔÙ´´½¨
 	Main_Renderer = SDL_CreateRenderer(Main_Window, name);
 	if (!Main_Renderer)
 		throw std::runtime_error(u8"Failed to create Main_Renderer!");
 }
 
-// åˆå§‹åŒ–å†…ç½®æ–‡å­—å¼•æ“
+// ³õÊ¼»¯ÄÚÖÃÎÄ×ÖÒıÇæ
 inline void FCE_Init_TextEngine()
 {
-	if (Main_TextEngine) return; // å¦‚æœæ–‡å­—å¼•æ“å·²å­˜åœ¨åˆ™ä¸å†åˆ›å»º
+	if (Main_TextEngine) return; // Èç¹ûÎÄ×ÖÒıÇæÒÑ´æÔÚÔò²»ÔÙ´´½¨
 	Main_TextEngine = TTF_CreateRendererTextEngine(Main_Renderer);
 	if (!Main_TextEngine)
 		throw std::runtime_error(u8"Failed to create Main_TextEngine!");
 }
 
-// é‡Šæ”¾æ¡†æ¶å†…ç½®èµ„æº [åŒ…å«ï¼šMain_TextEngineã€Main_Rendererã€Main_Window]
+// ÊÍ·Å¿ò¼ÜÄÚÖÃ×ÊÔ´ [°üº¬£ºMain_TextEngine¡¢Main_Renderer¡¢Main_Window]
 inline void FCE_Clean_Up()
 {
 	if (Main_TextEngine)
@@ -97,7 +97,7 @@ inline void FCE_Clean_Up()
 	}
 }
 
-// ç»˜åˆ¶ç©ºå¿ƒåœ†
+// »æÖÆ¿ÕĞÄÔ²
 inline void FCE_Draw_Circle(SDL_Renderer* renderer, float centerX, float centerY, float radius)
 {
 	float x = radius; float y = 0; float err = 0;
@@ -117,7 +117,7 @@ inline void FCE_Draw_Circle(SDL_Renderer* renderer, float centerX, float centerY
 	}
 }
 
-// ç»˜åˆ¶å®å¿ƒåœ†
+// »æÖÆÊµĞÄÔ²
 inline void FCE_Draw_FilledCircle(SDL_Renderer* renderer, float centerX, float centerY, float radius)
 {
 	for (float y = -radius; y <= radius; y += 1.0f)
@@ -128,10 +128,10 @@ inline void FCE_Draw_FilledCircle(SDL_Renderer* renderer, float centerX, float c
 }
 
 // ==============================================================================================
-//				åŸº ç¡€ ç±» å‹								Base	Type
+//				»ù ´¡ Àà ĞÍ								Base	Type
 // ==============================================================================================
 
-// å¤§å°
+// ´óĞ¡
 struct Size
 {
 	Size() = default;
@@ -143,7 +143,7 @@ struct Size
 	float height;
 };
 
-// äºŒç»´å‘é‡
+// ¶şÎ¬ÏòÁ¿
 class Vector2
 {
 public:
@@ -159,7 +159,7 @@ public:
 
 	Vector2 operator+(const Vector2& vct2) const { return Vector2(x + vct2.x, y + vct2.y); }
 
-	Vector2 operator-(const Vector2& vct2) { return Vector2(x - vct2.x, y - vct2.y); }
+	Vector2 operator-(const Vector2& vct2) const { return Vector2(x - vct2.x, y - vct2.y); }
 
 	Vector2 operator*(float val) { return Vector2(x * val, y * val); }
 
@@ -175,10 +175,13 @@ public:
 
 	void operator*=(float val) { x *= val; y *= val; }
 
-	// è·å–é•¿åº¦
+	// »ñÈ¡³¤¶È
 	float length() const { return sqrt(x * x + y * y); }
 
-	// æ ‡å‡†åŒ–
+	// ¼ì²âÊÇ·ñÇ÷½üÓëÄ¿±êÏòÁ¿
+	bool approx(const Vector2& target) { return (*this - target).length() <= 0.0001f; }
+
+	// ±ê×¼»¯
 	Vector2 normalize() const
 	{
 		float len = this->length();
@@ -189,47 +192,47 @@ public:
 	}
 };
 
-/*æ–‡å­—å±æ€§
-åŒ…æ‹¬ï¼šä½ç½®ã€å­—ä½“åƒç´ å¤§å°ã€å­—ä½“æ ·å¼ã€é¢œè‰²ã€æ–‡æœ¬å†…å®¹*/
+/*ÎÄ×ÖÊôĞÔ
+°üÀ¨£ºÎ»ÖÃ¡¢×ÖÌåÏñËØ´óĞ¡¡¢×ÖÌåÑùÊ½¡¢ÑÕÉ«¡¢ÎÄ±¾ÄÚÈİ*/
 struct TextProps
 {
-	Vector2 position;		// ä½ç½®
-	float ptsize;			// å¤§å°
-	TTF_Font* font;			// å­—ä½“æ ·å¼
-	SDL_Color color;		// é¢œè‰²
-	std::string text_info;	// æ–‡å­—å†…å®¹
+	Vector2 position;		// Î»ÖÃ
+	float ptsize;			// ´óĞ¡
+	TTF_Font* font;			// ×ÖÌåÑùÊ½
+	SDL_Color color;		// ÑÕÉ«
+	std::string text_info;	// ÎÄ×ÖÄÚÈİ
 };
 
-// æ¸²æŸ“å±‚çº§
+// äÖÈ¾²ã¼¶
 enum class RenderLayer
 {
-	None,			// æ— æ¸²æŸ“å±‚
-	Background,		// èƒŒæ™¯å±‚
-	GameObject,		// æ¸¸æˆå…ƒç´ å±‚
-	Effect,			// ç‰¹æ•ˆå±‚
-	Frontground,	// å‰æ™¯å±‚
-	UI				// UIå±‚
+	None,			// ÎŞäÖÈ¾²ã
+	Background,		// ±³¾°²ã
+	GameObject,		// ÓÎÏ·ÔªËØ²ã
+	Effect,			// ÌØĞ§²ã
+	Frontground,	// Ç°¾°²ã
+	UI				// UI²ã
 };
 
-// ç¢°æ’å±‚çº§
+// Åö×²²ã¼¶
 enum class CollisionLayer
 {
-	None = 0,				// æ— ç¢°æ’å±‚
-	Player = 1 << 0,		// ç©å®¶å±‚
-	Enemy = 1 << 1,			// æ•Œäººå±‚
-	GameMap = 1 << 2,		// æ¸¸æˆåœ°å›¾å±‚
-	GameObject = 1 << 3,	// æ¸¸æˆå…ƒç´ å±‚
-	Attack = 1 << 4,		// æ”»å‡»å±‚
+	None = 0,				// ÎŞÅö×²²ã
+	Player = 1 << 0,		// Íæ¼Ò²ã
+	Enemy = 1 << 1,			// µĞÈË²ã
+	GameMap = 1 << 2,		// ÓÎÏ·µØÍ¼²ã
+	GameObject = 1 << 3,	// ÓÎÏ·ÔªËØ²ã
+	Attack = 1 << 4,		// ¹¥»÷²ã
 };
 
-// é‡è½½æŒ‰ä½æˆ–è¿ç®—ç¬¦ |
+// ÖØÔØ°´Î»»òÔËËã·û |
 constexpr CollisionLayer operator|(CollisionLayer lhs, CollisionLayer rhs)
 {
 	using underlying = std::underlying_type_t<CollisionLayer>;
 	return static_cast<CollisionLayer>(static_cast<underlying>(lhs) | static_cast<underlying>(rhs));
 }
 
-// é‡è½½æŒ‰ä½ä¸è¿ç®—ç¬¦ &
+// ÖØÔØ°´Î»ÓëÔËËã·û &
 constexpr bool operator&(CollisionLayer lhs, CollisionLayer rhs)
 {
 	using underlying = std::underlying_type_t<CollisionLayer>;
@@ -237,10 +240,10 @@ constexpr bool operator&(CollisionLayer lhs, CollisionLayer rhs)
 }
 
 // ==============================================================================================
-//				åŸº ç¡€ å·¥ å…·								Base	Kits
+//				»ù ´¡ ¹¤ ¾ß								Base	Kits
 // ==============================================================================================
 
-// è¿›ç¨‹é”™è¯¯å¤„ç†
+// ½ø³Ì´íÎó´¦Àí
 class custom_runtime_error
 {
 public:
@@ -254,18 +257,18 @@ public:
 
 	~custom_runtime_error() = default;
 
-	// è·å–é”™è¯¯æ ‡é¢˜
+	// »ñÈ¡´íÎó±êÌâ
 	const char* title() const noexcept { return error_title.c_str(); }
 
-	// è·å–é”™è¯¯ä¿¡æ¯
+	// »ñÈ¡´íÎóĞÅÏ¢
 	const char* what() const noexcept { return error_info.c_str(); }
 
 private:
-	std::string error_title;	// é”™è¯¯æ ‡é¢˜
-	std::string error_info;		// é”™è¯¯ä¿¡æ¯
+	std::string error_title;	// ´íÎó±êÌâ
+	std::string error_info;		// ´íÎóĞÅÏ¢
 };
 
-// éšæœºæ•°ç”Ÿæˆå™¨
+// Ëæ»úÊıÉú³ÉÆ÷
 class Random
 {
 public:
@@ -275,7 +278,7 @@ public:
 		engine.seed(rd());
 	}
 
-	// ç”Ÿæˆ [min, max] èŒƒå›´å†…çš„éšæœºæ•´æ•°
+	// Éú³É [min, max] ·¶Î§ÄÚµÄËæ»úÕûÊı
 	static int randint(int min, int max)
 	{
 		if (min > max) std::swap(min, max);
@@ -283,7 +286,7 @@ public:
 		return dist(get_engine());
 	}
 
-	// ç”Ÿæˆ [min, max] èŒƒå›´å†…çš„éšæœºæµ®ç‚¹æ•°
+	// Éú³É [min, max] ·¶Î§ÄÚµÄËæ»ú¸¡µãÊı
 	static float randfloat(float min, float max)
 	{
 		if (min > max) std::swap(min, max);
@@ -301,14 +304,14 @@ private:
 	std::mt19937 engine;
 };
 
-// æ—¶é’Ÿ
+// Ê±ÖÓ
 using namespace std::chrono;
 class Clock
 {
 public:
 	Clock()
 	{
-		this->target_fps = 60;			// é»˜è®¤60å¸§
+		this->target_fps = 60;			// Ä¬ÈÏ60Ö¡
 		this->target_time = 1000 / target_fps;
 		this->last_time = steady_clock::now();
 		this->delta_time = 0;
@@ -317,7 +320,7 @@ public:
 
 	Clock(int fps_limit)
 	{
-		this->target_fps = fps_limit;	// è®¾ç½®ç›®æ ‡FPS
+		this->target_fps = fps_limit;	// ÉèÖÃÄ¿±êFPS
 		this->target_time = 1000 / target_fps;
 		this->last_time = steady_clock::now();
 		this->delta_time = 0;
@@ -326,7 +329,7 @@ public:
 
 	~Clock() = default;
 
-	// æ—¶é’Ÿå¼€å§‹è®¡æ—¶
+	// Ê±ÖÓ¿ªÊ¼¼ÆÊ±
 	void start_frame()
 	{
 		auto currentTime = steady_clock::now();
@@ -334,24 +337,24 @@ public:
 		last_time = currentTime;
 	}
 
-	// æ—¶é’Ÿç»“æŸè®¡æ—¶
+	// Ê±ÖÓ½áÊø¼ÆÊ±
 	void end_frame() const
 	{
 		auto currentTime = steady_clock::now();
-		auto elapsedTime = duration_cast<milliseconds>(currentTime - last_time).count();	// è·å–ç»è¿‡æ—¶é—´
+		auto elapsedTime = duration_cast<milliseconds>(currentTime - last_time).count();	// »ñÈ¡¾­¹ıÊ±¼ä
 
-		// å¦‚æœç»è¿‡æ—¶é—´å°äºå¸§é—´éš”å°±ä¼‘çœ 
+		// Èç¹û¾­¹ıÊ±¼äĞ¡ÓÚÖ¡¼ä¸ô¾ÍĞİÃß
 		if (elapsedTime < target_time)
 			std::this_thread::sleep_for(milliseconds(target_time - elapsedTime));
 	}
 
-	// è®¾ç½®æ˜¯å¦å‚ç›´åŒæ­¥
+	// ÉèÖÃÊÇ·ñ´¹Ö±Í¬²½
 	void set_VSync(bool is_abled)
 	{
 		if (is_abled)
 		{
 			int refresh = this->get_screen_refreshRate();
-			// printf("å±å¹•åˆ·æ–°ç‡: %d\n", refresh);	// æ‰“å°å±å¹•åˆ·æ–°ç‡
+			// printf("ÆÁÄ»Ë¢ĞÂÂÊ: %d\n", refresh);	// ´òÓ¡ÆÁÄ»Ë¢ĞÂÂÊ
 
 			if (refresh)
 				this->target_time = 1000 / refresh;
@@ -359,23 +362,23 @@ public:
 				throw custom_runtime_error(u8"Clock Error", u8"Warning: Cannot get screen refresh rate!");
 		}
 		else
-			this->target_time = 1000 / target_fps;		// è®¾ç½®ä¸ºç›®æ ‡FPS
+			this->target_time = 1000 / target_fps;		// ÉèÖÃÎªÄ¿±êFPS
 	}
 
-	// è®¾ç½®FPS
+	// ÉèÖÃFPS
 	void setFPS(int fps_limit)
 	{
-		this->target_fps = fps_limit;		// è®¾ç½®ç›®æ ‡FPS
+		this->target_fps = fps_limit;		// ÉèÖÃÄ¿±êFPS
 		this->target_time = 1000 / fps_limit;
 	}
 
-	// è·å–FPS
+	// »ñÈ¡FPS
 	int getFPS() const { return (int)(1000 / delta_time); }
 
-	// è·å–å¸§é—´éš”
+	// »ñÈ¡Ö¡¼ä¸ô
 	float get_DeltaTime() const { return (delta_time / 1000.0f) * time_scale; }
 
-	// è®¾ç½®æ—¶é—´ç¼©æ”¾
+	// ÉèÖÃÊ±¼äËõ·Å
 	void set_time_scale(float scale)
 	{
 		if (scale <= 0.0f) return;
@@ -383,55 +386,55 @@ public:
 	}
 
 private:
-	// è·å–å±å¹•åˆ·æ–°ç‡
+	// »ñÈ¡ÆÁÄ»Ë¢ĞÂÂÊ
 	int get_screen_refreshRate()
 	{
-		// è·å–ä¸»æ˜¾ç¤ºå™¨ï¼ˆé»˜è®¤æ˜¾ç¤ºå™¨ï¼‰
+		// »ñÈ¡Ö÷ÏÔÊ¾Æ÷£¨Ä¬ÈÏÏÔÊ¾Æ÷£©
 		SDL_DisplayID display = SDL_GetPrimaryDisplay();
 		if (!display) return 0;
 
-		// è·å–å½“å‰æ˜¾ç¤ºæ¨¡å¼
+		// »ñÈ¡µ±Ç°ÏÔÊ¾Ä£Ê½
 		const SDL_DisplayMode* mode = SDL_GetCurrentDisplayMode(display);
 		if (!mode) return 0;
 
-		// è¿”å›åˆ·æ–°ç‡ï¼ˆå¦‚æœæœ‰æ•ˆï¼Œå¦åˆ™è¿”å›é»˜è®¤å€¼ï¼‰
+		// ·µ»ØË¢ĞÂÂÊ£¨Èç¹ûÓĞĞ§£¬·ñÔò·µ»ØÄ¬ÈÏÖµ£©
 		return (mode->refresh_rate > 0) ? (int)mode->refresh_rate : 0;
 	}
 
 private:
-	int target_fps;							// ç›®æ ‡FPS
-	int target_time;						// ç›®æ ‡å¸§é—´éš”
-	steady_clock::time_point last_time;		// ç»è¿‡æ—¶é—´
-	float delta_time;						// å•å¸§é—´éš”
-	float time_scale;						// æ—¶é—´ç¼©æ”¾
+	int target_fps;							// Ä¿±êFPS
+	int target_time;						// Ä¿±êÖ¡¼ä¸ô
+	steady_clock::time_point last_time;		// ¾­¹ıÊ±¼ä
+	float delta_time;						// µ¥Ö¡¼ä¸ô
+	float time_scale;						// Ê±¼äËõ·Å
 };
 
-// è®¡æ—¶å™¨
+// ¼ÆÊ±Æ÷
 class Timer
 {
 public:
 	Timer() = default;
 	~Timer() = default;
 
-	// é‡å¯è®¡æ—¶å™¨
+	// ÖØÆô¼ÆÊ±Æ÷
 	void restart() { pass_time = 0; shotted = false; }
 
-	// è®¾ç½®ç­‰å¾…æ—¶é—´
+	// ÉèÖÃµÈ´ıÊ±¼ä
 	void set_wait_time(float val) { this->wait_time = val; }
 
-	// è®¾ç½®æ˜¯å¦å•æ¬¡è§¦å‘
+	// ÉèÖÃÊÇ·ñµ¥´Î´¥·¢
 	void set_one_shot(bool flag) { this->one_shot = flag; }
 
-	// è®¾ç½®å›è°ƒå‡½æ•°
+	// ÉèÖÃ»Øµ÷º¯Êı
 	void set_on_timeout(std::function<void()> timeout_callback) { this->on_timeout = timeout_callback; }
 
-	// æš‚åœ
+	// ÔİÍ£
 	void pause() { paused = true; }
 
-	// ç»§ç»­
+	// ¼ÌĞø
 	void resume() { paused = false; }
 
-	// æ›´æ–°è®¡æ—¶å™¨
+	// ¸üĞÂ¼ÆÊ±Æ÷
 	void on_update(float delta)
 	{
 		if (paused) return;
@@ -449,27 +452,27 @@ public:
 	}
 
 private:
-	float pass_time = 0;				// ç»è¿‡æ—¶é—´
-	float wait_time = 0;				// ç­‰å¾…æ—¶é—´
-	bool paused = false;				// æ˜¯å¦æš‚åœ
-	bool shotted = false;				// æ˜¯å¦å·²ç»è§¦å‘
-	bool one_shot = false;				// æ˜¯å¦å•è¯è§¦å‘
-	std::function<void()> on_timeout;	// å›è°ƒå‡½æ•°
+	float pass_time = 0;				// ¾­¹ıÊ±¼ä
+	float wait_time = 0;				// µÈ´ıÊ±¼ä
+	bool paused = false;				// ÊÇ·ñÔİÍ£
+	bool shotted = false;				// ÊÇ·ñÒÑ¾­´¥·¢
+	bool one_shot = false;				// ÊÇ·ñµ¥´Ê´¥·¢
+	std::function<void()> on_timeout;	// »Øµ÷º¯Êı
 };
 
-// æ•°å­¦è¿ç®—å·¥å…·
+// ÊıÑ§ÔËËã¹¤¾ß
 namespace maths
 {
-	// è§’åº¦è½¬å¼§åº¦
+	// ½Ç¶È×ª»¡¶È
 	inline float deg_to_rad(float degree) noexcept { return degree * PAI / 180.0f; }
 
-	// å¼§åº¦è½¬è§’åº¦
+	// »¡¶È×ª½Ç¶È
 	inline float rad_to_deg(float radian) noexcept { return radian * 180.0f / PAI; }
 
-	// æ’å€¼å‡½æ•°
+	// ²åÖµº¯Êı
 	inline float lerp(float current, float target, float t) noexcept { return current + (target - current) * t; }
 
-	// è®¡ç®—ä¸¤ç‚¹è·ç¦»
+	// ¼ÆËãÁ½µã¾àÀë
 	inline float distance_to(const Vector2& pos_1, const Vector2& pos_2)
 	{
 		float dx = pos_1.x - pos_2.x;
@@ -479,21 +482,21 @@ namespace maths
 };
 
 // =========================================================================================
-// 				åŸº ç¡€ å…ƒ ç´ 							 base	Elements
+// 				»ù ´¡ Ôª ËØ							 base	Elements
 // =========================================================================================
 
-// æ‘„åƒæœº
+// ÉãÏñ»ú
 class Camera
 {
 public:
-	// è·Ÿéšæ–¹å¼
+	// ¸úËæ·½Ê½
 	enum FollowStyle
 	{
-		None = 0,					// æ— è·Ÿéš
-		Static_Follow = 1 << 0,		// é™æ€è·Ÿéš
-		Smooth_Follow = 1 << 1,		// å¹³æ»‘è·Ÿéš
-		Only_X = 1 << 2,			// ä»…è·ŸéšXè½´
-		Only_Y = 1 << 3				// ä»…è·ŸéšYè½´
+		None = 0,					// ÎŞ¸úËæ
+		Static_Follow = 1 << 0,		// ¾²Ì¬¸úËæ
+		Smooth_Follow = 1 << 1,		// Æ½»¬¸úËæ
+		Only_X = 1 << 2,			// ½ö¸úËæXÖá
+		Only_Y = 1 << 3				// ½ö¸úËæYÖá
 	};
 
 public:
@@ -509,26 +512,26 @@ public:
 
 	~Camera() = default;
 
-	// è·å–æ‘„åƒæœºåæ ‡(ä¸­å¿ƒç‚¹)
+	// »ñÈ¡ÉãÏñ»ú×ø±ê(ÖĞĞÄµã)
 	const Vector2& get_position() const { return position; }
 
-	// è®¾ç½®æ‘„åƒæœºåæ ‡(ä¸­å¿ƒç‚¹)
+	// ÉèÖÃÉãÏñ»ú×ø±ê(ÖĞĞÄµã)
 	void set_position(const Vector2& pos) { this->base_position = pos; }
 
-	// è®¾ç½®æ‘„åƒæœºç¼©æ”¾
+	// ÉèÖÃÉãÏñ»úËõ·Å
 	void set_zoom(float scale) { this->zoom = scale; }
 
-	// è·å–æ‘„åƒæœºç¼©æ”¾
+	// »ñÈ¡ÉãÏñ»úËõ·Å
 	float get_zoom() const { return this->zoom; }
 
-	// é‡ç½®æ‘„åƒæœº
+	// ÖØÖÃÉãÏñ»ú
 	void reset()
 	{
 		position = base_position = shake_position = Vector2(0, 0);
-		this->zoom = 1.0f;		// é‡ç½®ç¼©æ”¾ä¸º1.0
+		this->zoom = 1.0f;		// ÖØÖÃËõ·ÅÎª1.0
 	}
 
-	// æŠ–åŠ¨æ‘„åƒæœº
+	// ¶¶¶¯ÉãÏñ»ú
 	void shake(float strength, float duration)
 	{
 		is_shaking = true;
@@ -538,16 +541,16 @@ public:
 		timer_shake.restart();
 	}
 
-	// æ¸²æŸ“çº¹ç†
+	// äÖÈ¾ÎÆÀí
 	void render_texture(SDL_Texture* texture, const SDL_FRect* rect_src, const SDL_FRect* rect_dst,
 		double angle, const SDL_FPoint* center, bool is_flip = false) const
 	{
-		// æ¸²æŸ“åæ ‡ = å±å¹•ä¸­å¿ƒç‚¹ + (è§’è‰²ä¸–ç•Œåæ ‡ - æ‘„åƒæœºåæ ‡) * ç¼©æ”¾å› å­
+		// äÖÈ¾×ø±ê = ÆÁÄ»ÖĞĞÄµã + (½ÇÉ«ÊÀ½ç×ø±ê - ÉãÏñ»ú×ø±ê) * Ëõ·ÅÒò×Ó
 		SDL_FRect rect_dst_win = *rect_dst;
 		rect_dst_win.x = this->get_screen_center().x + (rect_dst_win.x - position.x) * zoom;
 		rect_dst_win.y = this->get_screen_center().y + (rect_dst_win.y - position.y) * zoom;
 
-		// æ¸²æŸ“å¤§å° = çº¹ç†å¤§å° * ç¼©æ”¾å› å­
+		// äÖÈ¾´óĞ¡ = ÎÆÀí´óĞ¡ * Ëõ·ÅÒò×Ó
 		rect_dst_win.w = rect_dst->w * zoom;
 		rect_dst_win.h = rect_dst->h * zoom;
 
@@ -555,7 +558,7 @@ public:
 			is_flip ? SDL_FLIP_HORIZONTAL : SDL_FLIP_NONE);
 	}
 
-	// ç»˜åˆ¶çº¿æ®µ
+	// »æÖÆÏß¶Î
 	void render_shape(const Vector2& start, const Vector2& end, SDL_Color color) const
 	{
 		SDL_SetRenderDrawColor(Main_Renderer, color.r, color.g, color.b, color.a);
@@ -566,13 +569,13 @@ public:
 		SDL_RenderLine(Main_Renderer, start_win.x, start_win.y, end_win.x, end_win.y);
 	}
 
-	// ç»˜åˆ¶çŸ©å½¢
+	// »æÖÆ¾ØĞÎ
 	void render_shape(const SDL_FRect* rect, SDL_Color color, bool is_filled) const
 	{
 		SDL_SetRenderDrawColor(Main_Renderer, color.r, color.g, color.b, color.a);
 
 		SDL_FRect rect_dst_win = *rect;
-		rect_dst_win.w *= zoom; rect_dst_win.h *= zoom;		// ç¼©æ”¾å¤§å°
+		rect_dst_win.w *= zoom; rect_dst_win.h *= zoom;		// Ëõ·Å´óĞ¡
 		rect_dst_win.x = this->get_screen_center().x + (rect_dst_win.x - position.x) * zoom;
 		rect_dst_win.y = this->get_screen_center().y + (rect_dst_win.y - position.y) * zoom;
 
@@ -582,7 +585,7 @@ public:
 			SDL_RenderRect(Main_Renderer, &rect_dst_win);
 	}
 
-	// ç»˜åˆ¶åœ†å½¢
+	// »æÖÆÔ²ĞÎ
 	void render_shape(const Vector2& pos, float radius, SDL_Color color, bool is_filled) const
 	{
 		SDL_SetRenderDrawColor(Main_Renderer, color.r, color.g, color.b, color.a);
@@ -597,7 +600,7 @@ public:
 			FCE_Draw_Circle(Main_Renderer, circle_center.x, circle_center.y, radius * zoom);
 	}
 
-	// æ¸²æŸ“æ–‡å­—
+	// äÖÈ¾ÎÄ×Ö
 	void render_text(TextProps props) const
 	{
 		TTF_Text* text_win = TTF_CreateText(Main_TextEngine, props.font, props.text_info.c_str(), NULL);
@@ -611,12 +614,12 @@ public:
 		TTF_DrawRendererText(text_win, position_win.x, position_win.y);
 	}
 
-	// è·Ÿéšè§’è‰²
+	// ¸úËæ½ÇÉ«
 	void look_at(const Vector2& target_pos, int style)
 	{
 		if (style & None) return;
 
-		if (style & Camera::Static_Follow)	// é™æ€è·Ÿéš
+		if (style & Camera::Static_Follow)	// ¾²Ì¬¸úËæ
 		{
 			if (style & Camera::Only_X)
 				this->base_position.x = target_pos.x;
@@ -625,7 +628,7 @@ public:
 			else
 				this->base_position = target_pos;
 		}
-		else if (style & Camera::Smooth_Follow)		// å¹³æ»‘è·Ÿéš
+		else if (style & Camera::Smooth_Follow)		// Æ½»¬¸úËæ
 		{
 			if (style & Camera::Only_X)
 				this->base_position.x = maths::lerp(base_position.x, target_pos.x, smooth_strength);
@@ -639,7 +642,7 @@ public:
 		}
 	}
 
-	// æ›´æ–°æ‘„åƒæœº
+	// ¸üĞÂÉãÏñ»ú
 	void on_update(float delta)
 	{
 		timer_shake.on_update(delta);
@@ -651,35 +654,35 @@ public:
 			shake_position.y = (-50 + std::rand() % 100) / 50.0f * shaking_strength;
 		}
 
-		// æœ€ç»ˆä½ç½® = åŸºç¡€ä½ç½® + æŠ–åŠ¨ä½ç½®
+		// ×îÖÕÎ»ÖÃ = »ù´¡Î»ÖÃ + ¶¶¶¯Î»ÖÃ
 		position = base_position + shake_position;
 	}
 
 private:
-	// è·å–å±å¹•ä¸­å¿ƒç‚¹
+	// »ñÈ¡ÆÁÄ»ÖĞĞÄµã
 	Vector2 get_screen_center() const
 	{
 		int screen_w, screen_h;
-		SDL_GetWindowSize(Main_Window, &screen_w, &screen_h);		// è®¡ç®—å±å¹•å®½é«˜
-		Vector2 screen_center = Vector2(screen_w / 2.0f, screen_h / 2.0f);	// è·å–å±å¹•ä¸­å¿ƒç‚¹
+		SDL_GetWindowSize(Main_Window, &screen_w, &screen_h);		// ¼ÆËãÆÁÄ»¿í¸ß
+		Vector2 screen_center = Vector2(screen_w / 2.0f, screen_h / 2.0f);	// »ñÈ¡ÆÁÄ»ÖĞĞÄµã
 		return screen_center;
 	}
 
 private:
-	Vector2 position;					// æ‘„åƒæœºæœ€ç»ˆä½ç½®
-	Vector2 shake_position;				// æŠ–åŠ¨ä½ç½®
-	Vector2 base_position;				// åŸºç¡€ä½ç½®
+	Vector2 position;					// ÉãÏñ»ú×îÖÕÎ»ÖÃ
+	Vector2 shake_position;				// ¶¶¶¯Î»ÖÃ
+	Vector2 base_position;				// »ù´¡Î»ÖÃ
 
-	Timer timer_shake;					// æŠ–åŠ¨è®¡æ—¶å™¨
-	bool is_shaking = false;			// æ˜¯å¦æŠ–åŠ¨
-	float shaking_strength = 0;			// æŠ–åŠ¨å¹…åº¦
-	float smooth_strength = 0;			// å¹³æ»‘å¹…åº¦
-	float zoom = 1.0f;					// æ‘„åƒæœºç¼©æ”¾
+	Timer timer_shake;					// ¶¶¶¯¼ÆÊ±Æ÷
+	bool is_shaking = false;			// ÊÇ·ñ¶¶¶¯
+	float shaking_strength = 0;			// ¶¶¶¯·ù¶È
+	float smooth_strength = 0;			// Æ½»¬·ù¶È
+	float zoom = 1.0f;					// ÉãÏñ»úËõ·Å
 
-	const float SMOOTH_FACTOR = 1.5f;	// å¹³æ»‘ç³»æ•°
+	const float SMOOTH_FACTOR = 1.5f;	// Æ½»¬ÏµÊı
 };
 
-// åºåˆ—å¸§åŠ¨ç”»
+// ĞòÁĞÖ¡¶¯»­
 class Animation
 {
 public:
@@ -700,51 +703,51 @@ public:
 
 	~Animation() = default;
 
-	//é‡ç½®åŠ¨ç”»
+	//ÖØÖÃ¶¯»­
 	void reset() { timer.restart(); idx_frame = 0; }
 
-	// è®¾ç½®åŠ¨ç”»ä½ç½®
+	// ÉèÖÃ¶¯»­Î»ÖÃ
 	void set_position(const Vector2& position) { this->position = position; }
 
-	// è®¾ç½®åŠ¨ç”»æ–¹å‘
+	// ÉèÖÃ¶¯»­·½Ïò
 	void set_rotation(double angle) { this->angle = angle; }
 
-	// è®¾ç½®åŠ¨ç”»ä¸­å¿ƒç‚¹
+	// ÉèÖÃ¶¯»­ÖĞĞÄµã
 	void set_center(const SDL_FPoint& cneter) { this->center = center; }
 
-	// è®¾ç½®åŠ¨ç”»æ˜¯å¦å¾ªç¯
+	// ÉèÖÃ¶¯»­ÊÇ·ñÑ­»·
 	void set_loop(bool is_loop) { this->is_loop = is_loop; }
 
-	// è®¾ç½®åŠ¨ç”»å¸§é—´éš”
+	// ÉèÖÃ¶¯»­Ö¡¼ä¸ô
 	void set_interval(float interval) { timer.set_wait_time(interval); }
 
-	// è®¾ç½®åŠ¨ç”»æ˜¯å¦ç¿»è½¬
+	// ÉèÖÃ¶¯»­ÊÇ·ñ·­×ª
 	void set_flip(bool flag) { this->is_flip = flag; }
 
-	// è®¾ç½®åŠ¨ç”»å›è°ƒå‡½æ•°
+	// ÉèÖÃ¶¯»­»Øµ÷º¯Êı
 	void set_on_finished(std::function<void()> callback) { on_finished = callback; }
 
-	// æ›´æ–°åŠ¨ç”»
+	// ¸üĞÂ¶¯»­
 	void on_update(float delta) { timer.on_update(delta); }
 
-	// æ·»åŠ åºåˆ—å¸§
+	// Ìí¼ÓĞòÁĞÖ¡
 	void add_frame(SDL_Texture* texture, int num_h)
 	{
 		float width, height;
-		SDL_GetTextureSize(texture, &width, &height);	// è·å–åºåˆ—å¸§å®½é«˜
+		SDL_GetTextureSize(texture, &width, &height);	// »ñÈ¡ĞòÁĞÖ¡¿í¸ß
 
-		float width_frame = width / num_h;	// è·å–å•å¼ åºåˆ—å¸§å®½é«˜
+		float width_frame = width / num_h;	// »ñÈ¡µ¥ÕÅĞòÁĞÖ¡¿í¸ß
 		for (int i = 0; i < num_h; i++)
 		{
 			SDL_FRect rect_src;
 			rect_src.x = i * width_frame, rect_src.y = 0;
 			rect_src.w = width_frame, rect_src.h = height;
 
-			frame_list.emplace_back(texture, rect_src);		// å°†åºåˆ—å¸§åŠ å…¥åˆ—è¡¨
+			frame_list.emplace_back(texture, rect_src);		// ½«ĞòÁĞÖ¡¼ÓÈëÁĞ±í
 		}
 	}
 
-	// æ¸²æŸ“åŠ¨ç”»
+	// äÖÈ¾¶¯»­
 	void on_render(const Camera& camera) const
 	{
 		const Frame& frame = frame_list[idx_frame];
@@ -758,7 +761,7 @@ public:
 	}
 
 private:
-	// åºåˆ—å¸§ç»“æ„ä½“
+	// ĞòÁĞÖ¡½á¹¹Ìå
 	struct Frame
 	{
 		SDL_FRect rect_src;
@@ -772,75 +775,75 @@ private:
 	};
 
 private:
-	Vector2 position;					// ä½ç½®
-	double angle = 0;					// è§’åº¦
-	SDL_FPoint center = { 0 };			// ä¸­å¿ƒç‚¹
-	bool is_flip = false;				// æ˜¯å¦åè½¬
+	Vector2 position;					// Î»ÖÃ
+	double angle = 0;					// ½Ç¶È
+	SDL_FPoint center = { 0 };			// ÖĞĞÄµã
+	bool is_flip = false;				// ÊÇ·ñ·´×ª
 
-	Timer timer;						// å†…ç½®è®¡æ—¶å™¨
-	bool is_loop = true;				// æ˜¯å¦å¾ªç¯
-	size_t idx_frame = 0;				// å½“å‰å¸§ç´¢å¼•
-	std::vector<Frame> frame_list;		// åºåˆ—å¸§åˆ—è¡¨
-	std::function<void()> on_finished;	// åŠ¨ç”»æ’­æ”¾å®Œæ¯•å›è°ƒå‡½æ•°
+	Timer timer;						// ÄÚÖÃ¼ÆÊ±Æ÷
+	bool is_loop = true;				// ÊÇ·ñÑ­»·
+	size_t idx_frame = 0;				// µ±Ç°Ö¡Ë÷Òı
+	std::vector<Frame> frame_list;		// ĞòÁĞÖ¡ÁĞ±í
+	std::function<void()> on_finished;	// ¶¯»­²¥·ÅÍê±Ï»Øµ÷º¯Êı
 };
 
-// ç¢°æ’ç®±
+// Åö×²Ïä
 class CollisionManager;
 class CollisionBox
 {
 	friend class CollisionManager;
 public:
-	// è®¾ç½®æ˜¯å¦å¯ç”¨ç¢°æ’
+	// ÉèÖÃÊÇ·ñÆôÓÃÅö×²
 	void set_enabled(bool flag) { this->enabled = flag; }
 
-	// è®¾ç½®è‡ªèº«ç¢°æ’å±‚
+	// ÉèÖÃ×ÔÉíÅö×²²ã
 	void set_layer_src(CollisionLayer layer) { this->layer_src = layer; }
 
-	// è®¾ç½®ç›®æ ‡ç¢°æ’å±‚
+	// ÉèÖÃÄ¿±êÅö×²²ã
 	void set_layer_dst(CollisionLayer layer) { this->layer_dst = layer; }
 
-	// è®¾ç½®ç¢°æ’å›è°ƒå‡½æ•°
+	// ÉèÖÃÅö×²»Øµ÷º¯Êı
 	void set_on_collide(std::function<void(CollisionLayer)> callback) { this->on_collide = callback; }
 
-	// è®¾ç½®ç¢°æ’ç®±å¤§å°
+	// ÉèÖÃÅö×²Ïä´óĞ¡
 	void set_size(const Size& size) { this->size = size; }
 
-	// è·å–ç¢°æ’ç®±å¤§å°
+	// »ñÈ¡Åö×²Ïä´óĞ¡
 	const Size& get_size() const { return this->size; }
 
-	// è®¾ç½®ç¢°æ’ç®±ä½ç½®
+	// ÉèÖÃÅö×²ÏäÎ»ÖÃ
 	void set_position(const Vector2& pos) { this->position = pos; }
 
 private:
-	Size size = { 0, 0 };								// ç¢°æ’ç®±å¤§å°
-	Vector2 position;									// ç¢°æ’ç®±ä½ç½®
-	bool enabled = true;								// æ˜¯å¦å¯ç”¨ç¢°æ’æ£€æµ‹
-	std::function<void(CollisionLayer)> on_collide;		// ç¢°æ’å›è°ƒå‡½æ•°
-	CollisionLayer layer_src = CollisionLayer::None;	// è‡ªèº«ç¢°æ’å±‚
-	CollisionLayer layer_dst = CollisionLayer::None;	// ç›®æ ‡ç¢°æ’å±‚
+	Size size = { 0, 0 };								// Åö×²Ïä´óĞ¡
+	Vector2 position;									// Åö×²ÏäÎ»ÖÃ
+	bool enabled = true;								// ÊÇ·ñÆôÓÃÅö×²¼ì²â
+	std::function<void(CollisionLayer)> on_collide;		// Åö×²»Øµ÷º¯Êı
+	CollisionLayer layer_src = CollisionLayer::None;	// ×ÔÉíÅö×²²ã
+	CollisionLayer layer_dst = CollisionLayer::None;	// Ä¿±êÅö×²²ã
 
 private:
 	CollisionBox() = default;
 	~CollisionBox() = default;
 };
 
-// ç²¾çµæŠ½è±¡åŸºç±»
+// ¾«Áé³éÏó»ùÀà
 class Sprite
 {
 public:
 	Sprite() = default;
 	~Sprite() = default;
 
-	// è·å–ä½ç½®
+	// »ñÈ¡Î»ÖÃ
 	const Vector2& get_position() const { return this->position; }
 
-	// è®¾ç½®ä½ç½®
+	// ÉèÖÃÎ»ÖÃ
 	void set_position(const Vector2& pos) { this->position = pos; }
 
-	// è®¾ç½®æ¸²æŸ“å±‚
+	// ÉèÖÃäÖÈ¾²ã
 	void set_render_layer(RenderLayer layer) { this->render_layer = layer; }
 
-	// è·å–æ¸²æŸ“å±‚
+	// »ñÈ¡äÖÈ¾²ã
 	RenderLayer get_render_layer() const { return this->render_layer; }
 
 	virtual void on_update(float delta) {}
@@ -849,16 +852,16 @@ public:
 	virtual void reset_property() {}
 
 protected:
-	Vector2 position;								// ä½ç½®
-	Vector2 velocity;								// é€Ÿåº¦
-	CollisionBox* self_hitBox = nullptr;			// è‡ªèº«ç¢°æ’ç®±
-	RenderLayer render_layer = RenderLayer::None;	// æ¸²æŸ“å±‚
+	Vector2 position;								// Î»ÖÃ
+	Vector2 velocity;								// ËÙ¶È
+	CollisionBox* self_hitBox = nullptr;			// ×ÔÉíÅö×²Ïä
+	RenderLayer render_layer = RenderLayer::None;	// äÖÈ¾²ã
 };
 
-// æŒ‰é’®ï¼ˆä»…é€‚ç”¨ä¸UIå±‚
+// °´Å¥£¨½öÊÊÓÃÓëUI²ã
 class Button : public Sprite
 {
-	using effect_pair = std::pair<SDL_Texture*, Mix_Chunk*>;	// ç‰¹æ•ˆå¯¹ç»„ï¼ŒåŒ…å«çº¹ç†å’ŒéŸ³æ•ˆ
+	using effect_pair = std::pair<SDL_Texture*, Mix_Chunk*>;
 public:
 	Button() = default;
 	~Button() = default;
@@ -870,50 +873,50 @@ public:
 		this->effects["click"] = std::make_pair(nullptr, nullptr);
 	}
 
-	// è®¾ç½®å¤§å°
+	// ÉèÖÃ´óĞ¡
 	void set_size(const Size& size) { this->size = size; }
 
-	// è·å–å¤§å°
+	// »ñÈ¡´óĞ¡
 	const Size& get_size() const { return this->size; }
 
-	// è®¾ç½®ç‚¹å‡»å›è°ƒå‡½æ•°
+	// ÉèÖÃµã»÷»Øµ÷º¯Êı
 	void set_on_click(std::function<void()> callback) { this->on_click = callback; }
 
-	// è®¾ç½®æŒ‰é’®çº¹ç†ï¼ˆåˆ†åˆ«ä¸ºï¼šæ­£å¸¸ã€æ‚¬åœã€è¢«ç‚¹å‡»ï¼‰
+	// ÉèÖÃ°´Å¥ÎÆÀí£¨·Ö±ğÎª£ºÕı³£¡¢ĞüÍ£¡¢±»µã»÷£©
 	void set_texture(SDL_Texture* normal, SDL_Texture* hover, SDL_Texture* click)
 	{
-		// æ£€æŸ¥çº¹ç†æ˜¯å¦ä¸ºnullptr
+		// ¼ì²éÎÆÀíÊÇ·ñÎªnullptr
 		if (!normal || !hover || !click)
 			throw custom_runtime_error(u8"Button Argument Error", u8"Argument texture cannot be nullptr!");
 
 		effects["normal"].first = normal;
 		effects["hover"].first = hover;
 		effects["click"].first = click;
-		this->current_texture = effects["normal"].first;	// é»˜è®¤æ˜¾ç¤ºæ­£å¸¸çŠ¶æ€çº¹ç†
+		this->current_texture = effects["normal"].first;	// Ä¬ÈÏÏÔÊ¾Õı³£×´Ì¬ÎÆÀí
 	}
 
-	// è®¾ç½®æŒ‰é’®éŸ³æ•ˆï¼ˆåˆ†åˆ«ä¸ºï¼šæ‚¬åœã€è¢«ç‚¹å‡»ï¼‰
+	// ÉèÖÃ°´Å¥ÒôĞ§£¨·Ö±ğÎª£ºĞüÍ£¡¢±»µã»÷£©
 	void set_audio(Mix_Chunk* hover, Mix_Chunk* click)
 	{
 		effects["hover"].second = hover;
 		effects["click"].second = click;
 	}
 
-	// æ¸²æŸ“æŒ‰é’®
+	// äÖÈ¾°´Å¥
 	void on_render(const Camera&) override
 	{
-		if (!current_texture) return;	// å¦‚æœæ²¡æœ‰è®¾ç½®çº¹ç†åˆ™ä¸æ¸²æŸ“
+		if (!current_texture) return;	// Èç¹ûÃ»ÓĞÉèÖÃÎÆÀíÔò²»äÖÈ¾
 		SDL_FRect rect_dst_win = { position.x, position.y, size.width, size.height };
 		SDL_RenderTextureRotated(Main_Renderer, current_texture, nullptr, &rect_dst_win, 0, nullptr, SDL_FLIP_NONE);
 	}
 
-	// å¤„ç†è¾“å…¥äº‹ä»¶
+	// ´¦ÀíÊäÈëÊÂ¼ş
 	void on_input(const SDL_Event& event) override
 	{
 		bool in_range_x = event.button.x >= position.x && event.button.x <= position.x + size.width;
 		bool in_range_y = event.button.y >= position.y && event.button.y <= position.y + size.height;
 
-		if (event.type == SDL_EVENT_MOUSE_MOTION)	// é¼ æ ‡æ‚¬åœåœ¨æŒ‰é’®ä¸Š
+		if (event.type == SDL_EVENT_MOUSE_MOTION)	// Êó±êĞüÍ£ÔÚ°´Å¥ÉÏ
 		{
 			if (in_range_x && in_range_y)
 			{
@@ -931,7 +934,7 @@ public:
 				SDL_SetCursor(SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_DEFAULT));
 			}
 		}
-		if (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN && event.button.button == SDL_BUTTON_LEFT) // æŒ‰é’®è¢«ç‚¹å‡»
+		if (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN && event.button.button == SDL_BUTTON_LEFT) // °´Å¥±»µã»÷
 		{
 			if (in_range_x && in_range_y)
 			{
@@ -942,7 +945,7 @@ public:
 				this->on_click();
 			}
 		}
-		if (event.type == SDL_EVENT_MOUSE_BUTTON_UP && event.button.button == SDL_BUTTON_LEFT) // æŒ‰é’®è¢«é‡Šæ”¾
+		if (event.type == SDL_EVENT_MOUSE_BUTTON_UP && event.button.button == SDL_BUTTON_LEFT) // °´Å¥±»ÊÍ·Å
 		{
 			if (in_range_x && in_range_y)
 				this->current_texture = effects["hover"].first;
@@ -952,44 +955,44 @@ public:
 	}
 
 private:
-	Vector2 position;											// æŒ‰é’®ä½ç½®
-	Size size;													// æŒ‰é’®å¤§å°
-	bool is_hovering = false;									// æ˜¯å¦é¦–æ¬¡æ‚¬åœ
-	SDL_Texture* current_texture = nullptr;						// å½“å‰æ˜¾ç¤ºçš„çº¹ç†
-	std::unordered_map<std::string, effect_pair> effects;		// æ•ˆæœåˆ—è¡¨
-	std::function<void()> on_click;								// ç‚¹å‡»å›è°ƒå‡½æ•°
+	Vector2 position;											// °´Å¥Î»ÖÃ
+	Size size;													// °´Å¥´óĞ¡
+	bool is_hovering = false;									// ÊÇ·ñÊ×´ÎĞüÍ£
+	SDL_Texture* current_texture = nullptr;						// µ±Ç°ÏÔÊ¾µÄÎÆÀí
+	std::unordered_map<std::string, effect_pair> effects;		// Ğ§¹ûÁĞ±í
+	std::function<void()> on_click;								// µã»÷»Øµ÷º¯Êı
 };
 
-// åœºæ™¯æŠ½è±¡åŸºç±»
+// ³¡¾°³éÏó»ùÀà
 class Scene
 {
 public:
-	Scene() = default;			// æ„é€ å‡½æ•°å¤„åˆå§‹åŒ–å®ä¾‹åŒ–å¯¹è±¡
-	virtual ~Scene() = default;	// æå‡½æ•°å‡ºé‡Šæ”¾å®ä¾‹åŒ–å¯¹è±¡
+	Scene() = default;			// ¹¹Ôìº¯Êı´¦³õÊ¼»¯ÊµÀı»¯¶ÔÏó
+	virtual ~Scene() = default;	// Îöº¯Êı³öÊÍ·ÅÊµÀı»¯¶ÔÏó
 
-	// è·å–ç²¾çµ
+	// »ñÈ¡¾«Áé
 	template <typename _CvtTy>
 	_CvtTy* find_sprite(const std::string& name)
 	{
 		if (sprite_pool.find(name) == sprite_pool.end())
-			throw custom_runtime_error(u8"SceneManager Error", u8"Sprite â€œ" + name + u8"â€ is not found!");
+			throw custom_runtime_error(u8"SceneManager Error", u8"Sprite ¡°" + name + u8"¡± is not found!");
 		return (_CvtTy*)sprite_pool[name];
 	}
 
-	virtual void on_enter() = 0;						// è¿›å…¥åœºæ™¯ï¼ˆå°½é‡ä¸è¦åˆ›å»ºæ–°å¯¹è±¡ï¼Œè€Œæ˜¯å¯¹è§’è‰²å±æ€§çš„é‡ç½®ï¼‰
-	virtual void on_update(float delta) = 0;			// æ›´æ–°åœºæ™¯
-	virtual void on_render(const Camera& camera) = 0;	// æ¸²æŸ“åœºæ™¯
-	virtual void on_input(const SDL_Event& event) = 0;	// è¾“å…¥äº‹ä»¶å¤„ç†
-	virtual void on_exit() = 0;							// é€€å‡ºåœºæ™¯ï¼ˆå°½é‡ä¸è¦é”€æ¯å¯¹è±¡ï¼‰
+	virtual void on_enter() = 0;						// ½øÈë³¡¾°£¨¾¡Á¿²»Òª´´½¨ĞÂ¶ÔÏó£¬¶øÊÇ¶Ô½ÇÉ«ÊôĞÔµÄÖØÖÃ£©
+	virtual void on_update(float delta) = 0;			// ¸üĞÂ³¡¾°
+	virtual void on_render(const Camera& camera) = 0;	// äÖÈ¾³¡¾°
+	virtual void on_input(const SDL_Event& event) = 0;	// ÊäÈëÊÂ¼ş´¦Àí
+	virtual void on_exit() = 0;							// ÍË³ö³¡¾°£¨¾¡Á¿²»ÒªÏú»Ù¶ÔÏó£©
 	
 protected:
-	// å¤„ç†ç²¾çµæ¸²æŸ“
+	// ´¦Àí¾«ÁéäÖÈ¾
 	void render_sprite(const Camera& camera)
 	{
 		using _STy = std::pair<std::string, Sprite*>;
 		std::vector<_STy> sprite_vec(sprite_pool.begin(), sprite_pool.end());
 
-		// å¯¹èŠ‚ç‚¹å…ˆæŒ‰å±‚çº§ï¼Œå†æŒ‰ç…§Yåæ ‡è¿›è¡Œæ’åº
+		// ¶Ô½ÚµãÏÈ°´²ã¼¶£¬ÔÙ°´ÕÕY×ø±ê½øĞĞÅÅĞò
 		std::sort(sprite_vec.begin(), sprite_vec.end(), [](_STy& a, _STy& b) -> bool
 			{
 				if (a.second->get_render_layer() == b.second->get_render_layer())
@@ -1002,21 +1005,21 @@ protected:
 			sprite.second->on_render(camera);
 	}
 
-	// å¤„ç†ç²¾çµäº‹ä»¶
+	// ´¦Àí¾«ÁéÊÂ¼ş
 	void input_sprite(const SDL_Event& event)
 	{
 		for (auto& sprite : sprite_pool)
 			sprite.second->on_input(event);
 	}
 
-	// å¤„ç†ç²¾çµæ•°æ®
+	// ´¦Àí¾«ÁéÊı¾İ
 	void update_sprite(float delta)
 	{
 		for (auto& sprite : sprite_pool)
 			sprite.second->on_update(delta);
 	}
 
-	// æ¸…ç©ºç²¾çµæ± æ‰€æœ‰ç²¾çµ
+	// Çå¿Õ¾«Áé³ØËùÓĞ¾«Áé
 	void release_all()
 	{
 		for (auto& sprite : sprite_pool)
@@ -1025,26 +1028,26 @@ protected:
 	}
 
 protected:
-	std::unordered_map<std::string, Sprite*> sprite_pool;	// ç²¾çµæ± 
+	std::unordered_map<std::string, Sprite*> sprite_pool;	// ¾«Áé³Ø
 };
 
-// çŠ¶æ€èŠ‚ç‚¹
+// ×´Ì¬½Úµã
 class StateNode
 {
 public:
 	StateNode() = default;
 	~StateNode() = default;
 
-	virtual void on_enter() {}					// è¿›å…¥çŠ¶æ€
-	virtual void on_update(float delta) {}		// æ›´æ–°çŠ¶æ€
-	virtual void on_exit() {}					// é€€å‡ºçŠ¶æ€
+	virtual void on_enter() {}					// ½øÈë×´Ì¬
+	virtual void on_update(float delta) {}		// ¸üĞÂ×´Ì¬
+	virtual void on_exit() {}					// ÍË³ö×´Ì¬
 };
 
 // ===========================================================================================
-// 				è¡Œä¸ºæ§åˆ¶å™¨						Behavior Controllers
+// 				ĞĞÎª¿ØÖÆÆ÷						Behavior Controllers
 // ===========================================================================================
 
-// åŠ¨ç”»æ’­æ”¾å™¨
+// ¶¯»­²¥·ÅÆ÷
 class AnimationPlayer
 {
 public:
@@ -1053,75 +1056,75 @@ public:
 	~AnimationPlayer()
 	{
 		for (auto& anim : animation_pool)
-			anim.second.reset();		// é‡Šæ”¾åŠ¨ç”»èµ„æº
+			delete anim.second;		// ÊÍ·Å¶¯»­×ÊÔ´
 
 		animation_pool.clear();
 		current_animation = nullptr;
 	}
 
-	// æ·»åŠ åŠ¨ç”» (éœ€è¦æ·»åŠ std::unique_ptrç±»å‹)
-	void add_animation(const std::string& name, std::unique_ptr<Animation> anim)
+	// Ìí¼Ó¶¯»­ (ĞèÒªÌí¼Óstd::unique_ptrÀàĞÍ)
+	void add_animation(const std::string& name, Animation* anim)
 	{
 		if (animation_pool.find(name) != animation_pool.end())
-			throw custom_runtime_error(error_title, u8"Animation â€œ" + name + u8"â€ is already exist!");
+			throw custom_runtime_error(error_title, u8"Animation ¡°" + name + u8"¡± is already exist!");
 
-		animation_pool[name] = std::move(anim);
+		animation_pool[name] = anim;
 	}
 
-	// åˆ‡æ¢åŠ¨ç”»
+	// ÇĞ»»¶¯»­
 	void switch_to(const std::string& name)
 	{
 		if (animation_pool.find(name) == animation_pool.end())
-			throw custom_runtime_error(error_title, u8"Animation â€œ" + name + u8"â€ is not exist!");
+			throw custom_runtime_error(error_title, u8"Animation ¡°" + name + u8"¡± is not exist!");
 
-		this->current_animation = animation_pool[name].get();
+		this->current_animation = animation_pool[name];
 	}
 
-	// è®¾ç½®å½“å‰åŠ¨ç”»
+	// ÉèÖÃµ±Ç°¶¯»­
 	void set_animation(const std::string& name)
 	{
 		if (animation_pool.find(name) == animation_pool.end())
-			throw custom_runtime_error(error_title, u8"Animation â€œ" + name + u8"â€ is not exist!");
+			throw custom_runtime_error(error_title, u8"Animation ¡°" + name + u8"¡± is not exist!");
 
-		this->current_animation = animation_pool[name].get();
+		this->current_animation = animation_pool[name];
 		this->current_animation->reset();
 	}
 
-	// è·å–å½“å‰åŠ¨ç”»
+	// »ñÈ¡µ±Ç°¶¯»­
 	Animation* get_current()
 	{
 		if (current_animation)
 			return current_animation;
 		else
-			throw custom_runtime_error(error_title, u8"â€œcurrent_animationâ€ is a nullptr!");
+			throw custom_runtime_error(error_title, u8"¡°current_animation¡± is a nullptr!");
 	}
 
-	// æ›´æ–°åŠ¨ç”»
+	// ¸üĞÂ¶¯»­
 	void on_update(float delta)
 	{
 		if (current_animation)
 			current_animation->on_update(delta);
 		else
-			throw custom_runtime_error(error_title, u8"â€œcurrent_animationâ€ is a nullptr!");
+			throw custom_runtime_error(error_title, u8"¡°current_animation¡± is a nullptr!");
 	}
 
-	// æ¸²æŸ“åŠ¨ç”»
+	// äÖÈ¾¶¯»­
 	void on_render(const Camera& camera)
 	{
 		if (current_animation)
 			current_animation->on_render(camera);
 		else
-			throw custom_runtime_error(error_title, u8"â€œcurrent_animationâ€ is a nullptr!");
+			throw custom_runtime_error(error_title, u8"¡°current_animation¡± is a nullptr!");
 	}
 
 private:
-	std::unordered_map<std::string, std::unique_ptr<Animation>> animation_pool;		// åŠ¨ç”»æ± 
-	Animation* current_animation = nullptr;											// å½“å‰åŠ¨ç”»
+	std::unordered_map<std::string, Animation*> animation_pool;		// ¶¯»­³Ø
+	Animation* current_animation = nullptr;							// µ±Ç°¶¯»­
 
-	std::string error_title = u8"Animation Player Error";	// é”™è¯¯æ ‡é¢˜
+	std::string error_title = u8"Animation Player Error";	// ´íÎó±êÌâ
 };
 
-// çŠ¶æ€æœº
+// ×´Ì¬»ú
 class StateMachine
 {
 public:
@@ -1130,7 +1133,7 @@ public:
 	~StateMachine()
 	{
 		for (auto& state : state_pool)
-			state.second.reset();
+			delete state.second;		// ÊÍ·Å×´Ì¬³ØÄÚËùÓĞ×´Ì¬½Úµã
 
 		state_pool.clear();
 		current_state = nullptr;
@@ -1144,10 +1147,10 @@ public:
 			throw custom_runtime_error(u8"StateMachine Error", info.c_str());
 		}
 
-		if (need_init)	// å¦‚æœéœ€è¦åˆå§‹åŒ–çŠ¶æ€æœº
+		if (need_init)	// Èç¹ûĞèÒª³õÊ¼»¯×´Ì¬»ú
 		{
 			current_state->on_enter();
-			need_init = false;		// åˆå§‹åŒ–å®Œæˆ
+			need_init = false;		// ³õÊ¼»¯Íê³É
 		}
 
 		current_state->on_update(delta);
@@ -1155,57 +1158,57 @@ public:
 
 	void set_entry(const std::string& name)
 	{
-		// å¦‚æœæœªæ‰¾åˆ°ç›®æ ‡çŠ¶æ€
+		// Èç¹ûÎ´ÕÒµ½Ä¿±ê×´Ì¬
 		if (state_pool.find(name) == state_pool.end())
 		{
-			std::string info = u8"State â€œ" + name + u8"â€ is not found!";
+			std::string info = u8"State ¡°" + name + u8"¡± is not found!";
 			throw custom_runtime_error(u8"StateMachine Error", info);
 		}
 
-		current_state = state_pool[name].get();
+		current_state = state_pool[name];
 	}
 
 	void switch_to(const std::string& name)
 	{
-		// å¦‚æœæœªæ‰¾åˆ°ç›®æ ‡çŠ¶æ€
+		// Èç¹ûÎ´ÕÒµ½Ä¿±ê×´Ì¬
 		if (state_pool.find(name) == state_pool.end())
 		{
-			std::string info = u8"State â€œ" + name + u8"â€ is not found!";
+			std::string info = u8"State ¡°" + name + u8"¡± is not found!";
 			throw custom_runtime_error(u8"StateMachine Error", info);
 		}
 
 		if (current_state) current_state->on_exit();
-		current_state = state_pool[name].get();
+		current_state = state_pool[name];
 		current_state->on_enter();
 	}
 
-	void register_state(const std::string& name, std::unique_ptr<StateNode> state)
+	void register_state(const std::string& name, StateNode* state)
 	{
-		// å¦‚æœè¯¥çŠ¶æ€å·²å­˜åœ¨
+		// Èç¹û¸Ã×´Ì¬ÒÑ´æÔÚ
 		if (state_pool.find(name) != state_pool.end())
 		{
-			std::string info = u8"State â€œ" + name + u8"â€ is already exist!";
+			std::string info = u8"State ¡°" + name + u8"¡± is already exist!";
 			throw custom_runtime_error(u8"StateMachine Error", info);
 		}
 
-		state_pool[name] = std::move(state);		// æ³¨å†ŒçŠ¶æ€èŠ‚ç‚¹
+		state_pool[name] = state;		// ×¢²á×´Ì¬½Úµã
 	}
 
 private:
-	bool need_init = true;		// æ˜¯å¦éœ€è¦åˆå§‹åŒ–çŠ¶æ€æœº
-	StateNode* current_state = nullptr;		// å½“å‰çŠ¶æ€èŠ‚ç‚¹
-	std::unordered_map<std::string, std::unique_ptr<StateNode>> state_pool;		// çŠ¶æ€æ± 
+	bool need_init = true;										// ÊÇ·ñĞèÒª³õÊ¼»¯×´Ì¬»ú
+	StateNode* current_state = nullptr;							// µ±Ç°×´Ì¬½Úµã
+	std::unordered_map<std::string, StateNode*> state_pool;		// ×´Ì¬³Ø
 };
 
 // =========================================================================================
-//					ç®¡ ç† å™¨								Managers
+//					¹Ü Àí Æ÷								Managers
 // =========================================================================================
 
-// èµ„æºç®¡ç†å™¨
+// ×ÊÔ´¹ÜÀíÆ÷
 class ResourcesManager
 {
 public:
-	// è·å–èµ„æºç®¡ç†å™¨å•ä¾‹
+	// »ñÈ¡×ÊÔ´¹ÜÀíÆ÷µ¥Àı
 	static inline ResourcesManager* instance()
 	{
 		if (!m_instance)
@@ -1214,24 +1217,22 @@ public:
 		return m_instance;
 	}
 
-	// åŠ è½½èµ„æº
+	// ¼ÓÔØ×ÊÔ´
 	inline void load_resources(SDL_Renderer* renderer, const char* _PathName)
 	{
-		using namespace std::filesystem;
-
-		// åˆ¤æ–­æ–‡ä»¶æ˜¯å¦å­˜åœ¨
-		if (!exists(_PathName))
+		// ÅĞ¶ÏÎÄ¼şÊÇ·ñ´æÔÚ
+		if (!std::filesystem::exists(_PathName))
 		{
-			std::string info = u8"Dictionary â€œ" + std::string(_PathName) + u8"â€ is an error dictionary!";
+			std::string info = u8"Dictionary ¡°" + std::string(_PathName) + u8"¡± is an error dictionary!";
 			throw custom_runtime_error(u8"ResourcesManager Error", info);
 		}
 
-		// éå†ç›®æ ‡æ–‡ä»¶å†…éƒ¨æ‰€æœ‰æ–‡ä»¶
-		for (const auto& entry : recursive_directory_iterator(_PathName))
+		// ±éÀúÄ¿±êÎÄ¼şÄÚ²¿ËùÓĞÎÄ¼ş
+		for (const auto& entry : std::filesystem::recursive_directory_iterator(_PathName))
 		{
-			if (entry.is_regular_file())	// å¦‚æœæ˜¯æœ‰æ•ˆæ–‡ä»¶
+			if (entry.is_regular_file())	// Èç¹ûÊÇÓĞĞ§ÎÄ¼ş
 			{
-				const path& path = entry.path();
+				const std::filesystem::path& path = entry.path();
 				if (path.extension() == ".bmp" || path.extension() == ".png" || path.extension() == ".jpg")
 				{
 					SDL_Texture* texture = IMG_LoadTexture(renderer, path.u8string().c_str());
@@ -1256,73 +1257,73 @@ public:
 		}
 	}
 
-	// æŸ¥æ‰¾çº¹ç†èµ„æº
+	// ²éÕÒÎÆÀí×ÊÔ´
 	inline SDL_Texture* find_texture(const std::string& name)
 	{
-		// æœªæ‰¾åˆ°
+		// Î´ÕÒµ½
 		if (texture_pool.find(name) == texture_pool.end())
 		{
-			std::string info = u8"Texture â€œ" + name + u8"â€ is not found!";
+			std::string info = u8"Texture ¡°" + name + u8"¡± is not found!";
 			throw custom_runtime_error(u8"ResourcesManager Error", info);
 		}
 
 		return texture_pool[name];
 	}
 
-	// æŸ¥æ‰¾éŸ³é¢‘èµ„æº
+	// ²éÕÒÒôÆµ×ÊÔ´
 	inline Mix_Chunk* find_audio(const std::string& name)
 	{
-		// æœªæ‰¾åˆ°
+		// Î´ÕÒµ½
 		if (audio_pool.find(name) == audio_pool.end())
 		{
-			std::string info = u8"Audio â€œ" + name + u8"â€ is not found!";
+			std::string info = u8"Audio ¡°" + name + u8"¡± is not found!";
 			throw custom_runtime_error(u8"ResourcesManager Error", info);
 		}
 
 		return audio_pool[name];
 	}
 
-	// æŸ¥æ‰¾éŸ³ä¹èµ„æº
+	// ²éÕÒÒôÀÖ×ÊÔ´
 	inline Mix_Music* find_music(const std::string& name)
 	{
-		// æœªæ‰¾åˆ°
+		// Î´ÕÒµ½
 		if (music_pool.find(name) == music_pool.end())
 		{
-			std::string info = u8"Music â€œ" + name + u8"â€ is not found!";
+			std::string info = u8"Music ¡°" + name + u8"¡± is not found!";
 			throw custom_runtime_error(u8"ResourcesManager Error", info);
 		}
 
 		return music_pool[name];
 	}
 
-	// æŸ¥æ‰¾å­—ä½“èµ„æº
+	// ²éÕÒ×ÖÌå×ÊÔ´
 	inline TTF_Font* find_font(const std::string& name)
 	{
-		// æœªæ‰¾åˆ°
+		// Î´ÕÒµ½
 		if (font_pool.find(name) == font_pool.end())
 		{
-			std::string info = u8"Font â€œ" + name + u8"â€ is not found!";
+			std::string info = u8"Font ¡°" + name + u8"¡± is not found!";
 			throw custom_runtime_error(u8"ResourcesManager Error", info);
 		}
 
 		return font_pool[name];
 	}
 
-	// æ˜¾ç¤ºå·²åŠ è½½çš„èµ„æº
+	// ÏÔÊ¾ÒÑ¼ÓÔØµÄ×ÊÔ´
 	inline void debug_resources_list()
 	{
 		printf("=============================================================\n");
-		printf("å·²åŠ è½½çš„çº¹ç†èµ„æºå¦‚ä¸‹ (å…±%dä¸ª):\n", (int)texture_pool.size());
+		printf("ÒÑ¼ÓÔØµÄÎÆÀí×ÊÔ´ÈçÏÂ (¹²%d¸ö):\n", (int)texture_pool.size());
 		for (auto& texture : texture_pool)
 			printf("%s\n", texture.first.c_str());
 
-		printf("\nå·²åŠ è½½çš„éŸ³é¢‘èµ„æºå¦‚ä¸‹ (å…±%dä¸ª):\n", (int)audio_pool.size());
+		printf("\nÒÑ¼ÓÔØµÄÒôÆµ×ÊÔ´ÈçÏÂ (¹²%d¸ö):\n", (int)audio_pool.size());
 		for (auto& audio : audio_pool)
 			printf("%s\n", audio.first.c_str());
 		for (auto& music : music_pool)
 			printf("%s\n", music.first.c_str());
 
-		printf("\nå·²åŠ è½½çš„å­—ä½“èµ„æºå¦‚ä¸‹ (å…±%dä¸ª):\n", (int)font_pool.size());
+		printf("\nÒÑ¼ÓÔØµÄ×ÖÌå×ÊÔ´ÈçÏÂ (¹²%d¸ö):\n", (int)font_pool.size());
 		for (auto& font : font_pool)
 			printf("%s\n", font.first.c_str());
 		printf("=============================================================\n");
@@ -1333,21 +1334,21 @@ private:
 	~ResourcesManager() = default;
 
 private:
-	static ResourcesManager* m_instance;								// èµ„æºç®¡ç†å™¨å•ä¾‹
+	static ResourcesManager* m_instance;								// ×ÊÔ´¹ÜÀíÆ÷µ¥Àı
 
-	std::unordered_map<std::string, SDL_Texture*> texture_pool;			// çº¹ç†èµ„æºæ± 
-	std::unordered_map<std::string, Mix_Chunk*> audio_pool;				// éŸ³é¢‘èµ„æºæ± 
-	std::unordered_map<std::string, Mix_Music*> music_pool;				// éŸ³ä¹èµ„æºæ± 
-	std::unordered_map<std::string, TTF_Font*> font_pool;				// å­—ä½“èµ„æºæ± 
+	std::unordered_map<std::string, SDL_Texture*> texture_pool;			// ÎÆÀí×ÊÔ´³Ø
+	std::unordered_map<std::string, Mix_Chunk*> audio_pool;				// ÒôÆµ×ÊÔ´³Ø
+	std::unordered_map<std::string, Mix_Music*> music_pool;				// ÒôÀÖ×ÊÔ´³Ø
+	std::unordered_map<std::string, TTF_Font*> font_pool;				// ×ÖÌå×ÊÔ´³Ø
 };
 inline ResourcesManager* ResourcesManager::m_instance = nullptr;
 typedef ResourcesManager ResLoader;
 
-// åœºæ™¯ç®¡ç†å™¨
+// ³¡¾°¹ÜÀíÆ÷
 class SceneManager
 {
 public:
-	// è·å–åœºæ™¯ç®¡ç†å™¨å•ä¾‹
+	// »ñÈ¡³¡¾°¹ÜÀíÆ÷µ¥Àı
 	static inline SceneManager* instance()
 	{
 		if (!m_instance)
@@ -1356,74 +1357,74 @@ public:
 		return m_instance;
 	}
 
-	// è®¾ç½®å½“å‰åœºæ™¯
+	// ÉèÖÃµ±Ç°³¡¾°
 	inline void set_current_scene(const std::string& name)
 	{
-		// å¦‚æœåœºæ™¯æ± ä¸­ä¸å­˜åœ¨è¯¥åœºæ™¯
+		// Èç¹û³¡¾°³ØÖĞ²»´æÔÚ¸Ã³¡¾°
 		if (scene_pool.find(name) == scene_pool.end())
-			throw custom_runtime_error(u8"SceneManager Error", u8"Scene â€œ" + name + u8"â€ is not exist!");
+			throw custom_runtime_error(u8"SceneManager Error", u8"Scene ¡°" + name + u8"¡± is not exist!");
 
 		current_scene = scene_pool[name];
 		current_scene->on_enter();
 	}
 
-	// åˆ‡æ¢åœºæ™¯
+	// ÇĞ»»³¡¾°
 	inline void switch_to(const std::string& name)
 	{
 		current_scene->on_exit();
 
-		// å¦‚æœåœºæ™¯æ± ä¸­ä¸å­˜åœ¨è¯¥åœºæ™¯
+		// Èç¹û³¡¾°³ØÖĞ²»´æÔÚ¸Ã³¡¾°
 		if (scene_pool.find(name) == scene_pool.end())
-			throw custom_runtime_error(u8"SceneManager Error", u8"Scene â€œ" + name + u8"â€ is not exist!");
+			throw custom_runtime_error(u8"SceneManager Error", u8"Scene ¡°" + name + u8"¡± is not exist!");
 
 		current_scene = scene_pool[name];
 		current_scene->on_enter();
 	}
 
-	// æ·»åŠ æ–°åœºæ™¯
+	// Ìí¼ÓĞÂ³¡¾°
 	inline void add_scene(const std::string& name, Scene* scene)
 	{
 		if (scene_pool.find(name) != scene_pool.end())
-			throw custom_runtime_error(u8"SceneManager Error", u8"Scene â€œ" + name + u8"â€ is already exist!");
+			throw custom_runtime_error(u8"SceneManager Error", u8"Scene ¡°" + name + u8"¡± is already exist!");
 
 		scene_pool[name] = scene;
 	}
 
-	// è·å–åœºæ™¯
+	// »ñÈ¡³¡¾°
 	inline Scene* find_scene(const std::string& name)
 	{
-		// å¦‚æœåœºæ™¯æ± ä¸­ä¸å­˜åœ¨è¯¥åœºæ™¯
+		// Èç¹û³¡¾°³ØÖĞ²»´æÔÚ¸Ã³¡¾°
 		if (scene_pool.find(name) == scene_pool.end())
-			throw custom_runtime_error(u8"SceneManager Error", u8"Scene â€œ" + name + u8"â€ is not exist!");
+			throw custom_runtime_error(u8"SceneManager Error", u8"Scene ¡°" + name + u8"¡± is not exist!");
 
 		return scene_pool[name];
 	}
 
-	// æ›´æ–°å½“å‰åœºæ™¯
+	// ¸üĞÂµ±Ç°³¡¾°
 	void on_update(float delta)
 	{
 		if (current_scene)
 			current_scene->on_update(delta);
 		else
-			throw custom_runtime_error(u8"SceneManager Error", u8"â€œcurrent_sceneâ€ is a nullptr!");
+			throw custom_runtime_error(u8"SceneManager Error", u8"¡°current_scene¡± is a nullptr!");
 	}
 
-	// æ¸²æŸ“å½“å‰åœºæ™¯
+	// äÖÈ¾µ±Ç°³¡¾°
 	void on_render(const Camera& camera)
 	{
 		if (current_scene)
 			current_scene->on_render(camera);
 		else
-			throw custom_runtime_error(u8"SceneManager Error", u8"â€œcurrent_sceneâ€ is a nullptr!");
+			throw custom_runtime_error(u8"SceneManager Error", u8"¡°current_scene¡± is a nullptr!");
 	}
 
-	// å¤„ç†è¾“å…¥äº‹ä»¶
+	// ´¦ÀíÊäÈëÊÂ¼ş
 	void on_input(const SDL_Event& event)
 	{
 		if (current_scene)
 			current_scene->on_input(event);
 		else
-			throw custom_runtime_error(u8"SceneManager Error", u8"â€œcurrent_sceneâ€ is a nullptr!");
+			throw custom_runtime_error(u8"SceneManager Error", u8"¡°current_scene¡± is a nullptr!");
 	}
 
 private:
@@ -1431,17 +1432,17 @@ private:
 	~SceneManager() = default;
 
 private:
-	static SceneManager* m_instance;						// åœºæ™¯ç®¡ç†å™¨å•ä¾‹
-	Scene* current_scene = nullptr;							// å½“å‰åœºæ™¯
-	std::unordered_map<std::string, Scene*> scene_pool;		// åœºæ™¯æ± 
+	static SceneManager* m_instance;						// ³¡¾°¹ÜÀíÆ÷µ¥Àı
+	Scene* current_scene = nullptr;							// µ±Ç°³¡¾°
+	std::unordered_map<std::string, Scene*> scene_pool;		// ³¡¾°³Ø
 };
 inline SceneManager* SceneManager::m_instance = nullptr;
 
-// ç¢°æ’ç®¡ç†å™¨
+// Åö×²¹ÜÀíÆ÷
 class CollisionManager
 {
 public:
-	// è·å–ç¢°æ’ç®¡ç†å™¨å•ä¾‹
+	// »ñÈ¡Åö×²¹ÜÀíÆ÷µ¥Àı
 	static inline CollisionManager* instance()
 	{
 		if (!m_instance)
@@ -1450,7 +1451,7 @@ public:
 		return m_instance;
 	}
 
-	// æ·»åŠ ç¢°æ’ç®±
+	// Ìí¼ÓÅö×²Ïä
 	inline CollisionBox* create_collision_box()
 	{
 		CollisionBox* collision_box = new CollisionBox();
@@ -1458,7 +1459,7 @@ public:
 		return collision_box;
 	}
 
-	// é”€æ¯ç¢°æ’ç®±
+	// Ïú»ÙÅö×²Ïä
 	inline void destroy_collision_box(CollisionBox* collision_box)
 	{
 		collision_box_list.erase(std::remove(collision_box_list.begin(),
@@ -1466,7 +1467,7 @@ public:
 		delete collision_box;
 	}
 
-	// å¤„ç†ç¢°æ’æ£€æµ‹
+	// ´¦ÀíÅö×²¼ì²â
 	inline void process_collide()
 	{
 		for (auto collision_box_src : collision_box_list)
@@ -1480,40 +1481,40 @@ public:
 					|| !(collision_box_src->layer_dst & collision_box_dst->layer_src))
 					continue;
 
-				// æ¨ªå‘ç¢°æ’æ¡ä»¶ï¼šä¸¤ç¢°æ’ç®±çš„maxX - ä¸¤ç¢°æ’ç®±çš„minX <= ä¸¤ç¢°æ’ç®±çš„å®½åº¦ä¹‹å’Œ
+				// ºáÏòÅö×²Ìõ¼ş£ºÁ½Åö×²ÏäµÄmaxX - Á½Åö×²ÏäµÄminX <= Á½Åö×²ÏäµÄ¿í¶ÈÖ®ºÍ
 				float max_x = std::max(collision_box_src->position.x + collision_box_src->size.width, collision_box_dst->position.x + collision_box_dst->size.width);
 				float min_x = std::min(collision_box_src->position.x, collision_box_dst->position.x);
 				bool is_collide_x = (max_x - min_x <= collision_box_src->size.width + collision_box_dst->size.width);
 
-				// çºµå‘ç¢°æ’æ¡ä»¶ï¼šä¸¤ç¢°æ’ç®±çš„maxY - ä¸¤ç¢°æ’ç®±çš„minY <= ä¸¤ç¢°æ’ç®±çš„é«˜åº¦ä¹‹å’Œ
+				// ×İÏòÅö×²Ìõ¼ş£ºÁ½Åö×²ÏäµÄmaxY - Á½Åö×²ÏäµÄminY <= Á½Åö×²ÏäµÄ¸ß¶ÈÖ®ºÍ
 				float max_y = std::max(collision_box_src->position.y + collision_box_src->size.height, collision_box_dst->position.y + collision_box_dst->size.height);
 				float min_y = std::min(collision_box_src->position.y, collision_box_dst->position.y);
 				bool is_collide_y = (max_y - min_y <= collision_box_src->size.height + collision_box_dst->size.height);
 				
-				// å¦‚æœæ¨ªå‘/çºµå‘éƒ½æˆç«‹ï¼Œä¸”ç›®æ ‡ç¢°æ’ç®±å­˜åœ¨å›è°ƒå‡½æ•°ï¼Œåˆ™æ‰§è¡Œå›è°ƒå‡½æ•°
+				// Èç¹ûºáÏò/×İÏò¶¼³ÉÁ¢£¬ÇÒÄ¿±êÅö×²Ïä´æÔÚ»Øµ÷º¯Êı£¬ÔòÖ´ĞĞ»Øµ÷º¯Êı
 				if (is_collide_x && is_collide_y && collision_box_dst->on_collide)
 					collision_box_dst->on_collide(collision_box_src->layer_src);
 			}
 		}
 	}
 	
-	// è°ƒè¯•ç¢°æ’ç®±
+	// µ÷ÊÔÅö×²Ïä
 	inline void debug_collision_box(const Camera& camera)
 	{
 		for (auto collision_box : collision_box_list)
 		{
-			// å®šä¹‰ç¢°æ’ç®±æ¸²æŸ“çŸ©å½¢
+			// ¶¨ÒåÅö×²ÏääÖÈ¾¾ØĞÎ
 			SDL_FRect rect_dst = { collision_box->position.x, collision_box->position.y,
 				collision_box->size.width, collision_box->size.height };
 
-			// å®šä¹‰ç¢°æ’ç®±æ¸²æŸ“é¢œè‰²
+			// ¶¨ÒåÅö×²ÏääÖÈ¾ÑÕÉ«
 			SDL_Color color;
 			if (collision_box->enabled)
 				color = { 255,195,195,255 };
 			else
 				color = { 115,155,175,255 };
 
-			camera.render_shape(&rect_dst, color, false);	// ç»˜åˆ¶ç¢°æ’ç®±
+			camera.render_shape(&rect_dst, color, false);	// »æÖÆÅö×²Ïä
 		}
 	}
 
@@ -1522,7 +1523,7 @@ private:
 	~CollisionManager() = default;
 
 private:
-	static CollisionManager* m_instance;			// ç¢°æ’ç®¡ç†å™¨å•ä¾‹
-	std::vector<CollisionBox*> collision_box_list;	// ç¢°æ’ç®±åˆ—è¡¨
+	static CollisionManager* m_instance;			// Åö×²¹ÜÀíÆ÷µ¥Àı
+	std::vector<CollisionBox*> collision_box_list;	// Åö×²ÏäÁĞ±í
 };
 inline CollisionManager* CollisionManager::m_instance = nullptr;
