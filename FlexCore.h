@@ -749,7 +749,7 @@ namespace fce
 		float smooth_strength = 0;			// 平滑幅度
 		float zoom = 1.0f;					// 摄像机缩放
 
-		const float SMOOTH_FACTOR = 1.5f;	// 平滑系数
+		const float SMOOTH_FACTOR = 1.5f;	// 平滑系数常量
 	};
 
 	// 序列帧动画
@@ -862,12 +862,12 @@ namespace fce
 		};
 
 	private:
-		Vector2 position;				// 位置
+		Vector2 position;					// 位置
 		double angle = 0;					// 角度
 		SDL_FPoint center = { 0 };			// 中心点
 		bool is_flip = false;				// 是否反转
 
-		Timer timer;					// 内置计时器
+		Timer timer;						// 内置计时器
 		bool is_loop = true;				// 是否循环
 		size_t idx_frame = 0;				// 当前帧索引
 		std::vector<Frame> frame_list;		// 序列帧列表
@@ -1232,7 +1232,7 @@ namespace fce
 			this->current_animation = animation_pool[name];
 		}
 
-		// 设置当前动画
+		// 设置当前动画，并从头播放
 		void set_animation(const std::string& name)
 		{
 			if (animation_pool.find(name) == animation_pool.end())
@@ -1290,6 +1290,7 @@ namespace fce
 			current_state = nullptr;
 		}
 
+		// 更新状态机
 		void on_update(float delta)
 		{
 			if (!current_state)
@@ -1307,6 +1308,7 @@ namespace fce
 			current_state->on_update(delta);
 		}
 
+		// 设置初状态节点（用于初始化）
 		void set_entry(const std::string& name)
 		{
 			// 如果未找到目标状态
@@ -1319,6 +1321,7 @@ namespace fce
 			current_state = state_pool[name];
 		}
 
+		// 切换状态节点
 		void switch_to(const std::string& name)
 		{
 			// 如果未找到目标状态
@@ -1333,6 +1336,7 @@ namespace fce
 			current_state->on_enter();
 		}
 
+		// 注册状态节点
 		void register_state(const std::string& name, StateNode* state)
 		{
 			// 如果该状态已存在
@@ -1346,7 +1350,7 @@ namespace fce
 		}
 
 	private:
-		bool need_init = true;										// 是否需要初始化状态机
+		bool need_init = true;									// 是否需要初始化状态机
 		StateNode* current_state = nullptr;						// 当前状态节点
 		std::unordered_map<std::string, StateNode*> state_pool;	// 状态池
 	};
@@ -1487,10 +1491,10 @@ namespace fce
 	private:
 		static ResourcesManager* m_instance;							// 资源管理器单例
 
-		std::unordered_map<std::string, SDL_Texture*> texture_pool;			// 纹理资源池
-		std::unordered_map<std::string, Mix_Chunk*> audio_pool;				// 音频资源池
-		std::unordered_map<std::string, Mix_Music*> music_pool;				// 音乐资源池
-		std::unordered_map<std::string, TTF_Font*> font_pool;				// 字体资源池
+		std::unordered_map<std::string, SDL_Texture*> texture_pool;		// 纹理资源池
+		std::unordered_map<std::string, Mix_Chunk*> audio_pool;			// 音频资源池
+		std::unordered_map<std::string, Mix_Music*> music_pool;			// 音乐资源池
+		std::unordered_map<std::string, TTF_Font*> font_pool;			// 字体资源池
 	};
 	inline ResourcesManager* ResourcesManager::m_instance = nullptr;
 	typedef ResourcesManager ResLoader;
