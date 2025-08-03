@@ -451,7 +451,7 @@ namespace fce
 		// 设置等待时间
 		void set_wait_time(float val) { this->wait_time = val; }
 
-		// 设置是否单次触发
+		// 设置是否单次触发（默认false）
 		void set_one_shot(bool flag) { this->one_shot = flag; }
 
 		// 设置回调函数
@@ -782,16 +782,16 @@ namespace fce
 		// 设置动画方向
 		void set_rotation(double angle) { this->angle = angle; }
 
-		// 设置动画中心点
+		// 设置动画中心点（默认为纹理左上角）
 		void set_center(const SDL_FPoint& center) { this->center = center; }
 
-		// 设置动画是否循环（默认是true）
+		// 设置动画是否循环（默认true）
 		void set_loop(bool is_loop) { this->is_loop = is_loop; }
 
 		// 设置动画帧间隔
 		void set_interval(float interval) { timer.set_wait_time(interval); }
 
-		// 设置动画是否翻转
+		// 设置动画是否翻转（默认false）
 		void set_flip(bool flag) { this->is_flip = flag; }
 
 		// 设置动画回调函数
@@ -880,7 +880,7 @@ namespace fce
 	{
 		friend class CollisionManager;
 	public:
-		// 设置是否启用碰撞
+		// 设置是否启用碰撞（默认true）
 		void set_enabled(bool flag) { this->enabled = flag; }
 
 		// 设置自身碰撞层
@@ -919,7 +919,7 @@ namespace fce
 	{
 	public:
 		Sprite() = default;
-		~Sprite() = default;
+		virtual ~Sprite() = default;
 
 		// 获取速度
 		const Vector2& get_velocity() const { return this->velocity; }
@@ -967,12 +967,13 @@ namespace fce
 		virtual void on_update(float delta) = 0;				// 更新逻辑
 		virtual void on_render(const Camera& camera) = 0;		// 渲染画面
 		virtual void on_input(const SDL_Event& event) = 0;		// 处理输入
-		virtual void reset_property() = 0;						// 重置角色属性
+		virtual void reset_property() = 0;						// 重置角色属性4
 
 	protected:
 		Vector2 position;								// 位置
 		Vector2 velocity;								// 速度
 		float direction = 0.0f;							// 方向
+		CollisionBox* hit_box = nullptr;				// 自身碰撞箱
 		RenderLayer render_layer = RenderLayer::None;	// 渲染层
 	};
 
@@ -1171,9 +1172,9 @@ namespace fce
 			std::sort(sorted_list.begin(), sorted_list.end(), [](const Sprite* a, const Sprite* b)
 				{
 					if (a->get_render_layer() == b->get_render_layer())
-						return a->get_position().y > b->get_position().y;
+						return a->get_position().y < b->get_position().y;
 					else
-						return a->get_render_layer() > b->get_render_layer();
+						return a->get_render_layer() < b->get_render_layer();
 				});
 
 			return sorted_list;
