@@ -199,14 +199,18 @@ namespace fce
 		}
 
 		// 从指定路径模板加载目标数量纹理
-		void load_from_file(SDL_Renderer* renderer, const char* path_template, int num)
+		void load_from_file(const char* path_template, int num_of_tex, int begin_num = 1)
 		{
-			for (int i = 0; i < num; i++)
+			for (int i = begin_num; i <= num_of_tex; i++)
 			{
 				char path_file[256];
-				sprintf_s(path_file, path_template, i + 1);		// 补全路径
+				sprintf_s(path_file, path_template, i);		// 补全路径
 
-				SDL_Texture* texture = IMG_LoadTexture(renderer, path_file);	// 加载纹理
+				SDL_Texture* texture = IMG_LoadTexture(Main_Renderer, path_file);	// 加载纹理
+				if (texture == nullptr)
+					throw custom_error("Atlas load resources error",
+						"Cannot load texture from “" + std::string(path_file) + "”\n Please check path correctness or image's existence!");
+
 				tex_list.push_back(texture);	// 加入纹理列表
 			}
 		}
