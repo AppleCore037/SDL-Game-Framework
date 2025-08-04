@@ -208,8 +208,10 @@ namespace fce
 
 				SDL_Texture* texture = IMG_LoadTexture(Main_Renderer, path_file);	// 加载纹理
 				if (texture == nullptr)
-					throw custom_error("Atlas load resources error",
-						"Cannot load texture from “" + std::string(path_file) + "”\n Please check path correctness or image's existence!");
+				{
+					std::string info = "Cannot load texture from “" + std::string(path_file) + "”\nPlease check path correctness or image's existence!";
+					throw std::runtime_error(info.c_str());
+				}
 
 				tex_list.push_back(texture);	// 加入纹理列表
 			}
