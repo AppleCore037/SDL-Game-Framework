@@ -16,6 +16,10 @@
 #include <SDL3_mixer/SDL_mixer.h>
 #include <SDL3_ttf/SDL_ttf.h>
 
+constexpr float PAI = 3.14159265f;	// 圆周率
+constexpr SDL_InitFlags SDL_INIT_EVERYTHING = (SDL_INIT_AUDIO | SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_JOYSTICK | SDL_INIT_HAPTIC | SDL_INIT_GAMEPAD | SDL_INIT_SENSOR);
+constexpr MIX_InitFlags MIX_INIT_EVERYTHING = (MIX_INIT_MP3 | MIX_INIT_FLAC | MIX_INIT_MID | MIX_INIT_MOD | MIX_INIT_OGG | MIX_INIT_OPUS | MIX_INIT_WAVPACK);
+
 namespace fce
 {
 // ==============================================================================================
@@ -26,7 +30,6 @@ namespace fce
 	inline SDL_Renderer* Main_Renderer = nullptr;			// 主渲染器
 	inline TTF_TextEngine* Main_TextEngine = nullptr;		// 主文字引擎
 
-	constexpr float PAI = 3.14159265f;							// 圆周率
 	constexpr SDL_Color Color_Red = { 255, 0, 0, 255 };			// 红
 	constexpr SDL_Color Color_Blue = { 0, 0, 255, 255 };		// 蓝
 	constexpr SDL_Color Color_Green = { 0, 255, 0, 255 };		// 绿
@@ -34,15 +37,58 @@ namespace fce
 	constexpr SDL_Color Color_Black = { 0, 0, 0, 255 };			// 黑
 	constexpr SDL_Color Color_Gray = { 128, 128, 128, 255 };	// 灰
 
-	constexpr SDL_InitFlags SDL_INIT_EVERYTHING = (SDL_INIT_AUDIO | SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_JOYSTICK | SDL_INIT_HAPTIC | SDL_INIT_GAMEPAD | SDL_INIT_SENSOR);
-	constexpr MIX_InitFlags MIX_INIT_EVERYTHING = (MIX_INIT_MP3 | MIX_INIT_FLAC | MIX_INIT_MID | MIX_INIT_MOD | MIX_INIT_OGG | MIX_INIT_OPUS | MIX_INIT_WAVPACK);
+// ==============================================================================================
+//				基 础 枚 举 类 型						Base Enum Types
+// ==================================================================================================
+
+	// 窗口标签
+	enum class WindowFlags
+	{
+		shown = SDL_EVENT_WINDOW_SHOWN,			// 显示
+		hidden = SDL_EVENT_WINDOW_HIDDEN,		// 隐藏
+		resizable = SDL_EVENT_WINDOW_RESIZED,	// 可调整大小
+		maximized = SDL_EVENT_WINDOW_MAXIMIZED,	// 最大化
+		minimized = SDL_EVENT_WINDOW_MINIMIZED,	// 最小化
+		fullscreen = SDL_WINDOW_FULLSCREEN,		// 全屏
+	};
+
+	// 消息框类型
+	enum class MsgBoxType
+	{
+		Info,		// 信息
+		Warning,	// 警告
+		Error,		// 错误
+	};
+
+	// 渲染层级
+	enum class RenderLayer
+	{
+		None,			// 无渲染层
+		Background,		// 背景层
+		Label,			// 游戏内部文本层
+		GameObject,		// 游戏元素层
+		Effect,			// 特效层
+		Frontground,	// 前景层
+		UI				// UI层
+	};
+
+	// 碰撞层级
+	enum class CollisionLayer
+	{
+		None = 0,				// 无碰撞层
+		Player = 1 << 0,		// 玩家层
+		Enemy = 1 << 1,			// 敌人层
+		GameMap = 1 << 2,		// 游戏地图层
+		GameObject = 1 << 3,	// 游戏元素层
+		Attack = 1 << 4,		// 攻击层
+	};
 
 // ==============================================================================================
 //				基 础 函 数						Base	Functions
 // ==============================================================================================
 
 	// 初始化基础窗口设置
-	inline void Init_Graphic(const std::string& title, int w, int h, SDL_WindowFlags flags = SDL_EVENT_WINDOW_SHOWN)
+	inline void Init_Graphic(const std::string& title, int w, int h, WindowFlags flags = WindowFlags::shown)
 	{
 		// 初始化SDL相关模块
 		SDL_Init(SDL_INIT_EVERYTHING);
@@ -54,7 +100,7 @@ namespace fce
 
 		// 初始化窗口
 		if (Main_Window) return; // 如果窗口已存在则不再创建
-		Main_Window = SDL_CreateWindow(title.c_str(), w, h, flags);
+		Main_Window = SDL_CreateWindow(title.c_str(), w, h, (SDL_WindowFlags)flags);
 		if (!Main_Window)
 			throw std::runtime_error(u8"Failed to create Main_Window!");
 
@@ -118,6 +164,38 @@ namespace fce
 			result = "Mouse Motion";
 
 		return result.c_str();
+	}
+
+	// 显示消息框
+	inline void Show_MessageBox(MsgBoxType type, const char* title, const char* message)
+	{
+		SDL_MessageBoxFlags flag = SDL_MESSAGEBOX_INFORMATION;	// 默认信息框类型
+		switch (type)
+		{
+		case fce::MsgBoxType::Info:		flag = SDL_MESSAGEBOX_INFORMATION;	break;
+		case fce::MsgBoxType::Warning:	flag = SDL_MESSAGEBOX_WARNING;		break;
+		case fce::MsgBoxType::Error:	flag = SDL_MESSAGEBOX_ERROR;		break;
+		}
+
+		// 检测主窗口是否存在
+		if (Main_Window != nullptr)
+			SDL_ShowSimpleMessageBox(flag, title, message, Main_Window);
+		else
+			SDL_ShowSimpleMessageBox(flag, title, message, nullptr);
+	}
+
+	// 重载按位或运算符 |
+	constexpr CollisionLayer operator|(CollisionLayer lhs, CollisionLayer rhs)
+	{
+		using underlying = std::underlying_type_t<CollisionLayer>;
+		return static_cast<CollisionLayer>(static_cast<underlying>(lhs) | static_cast<underlying>(rhs));
+	}
+
+	// 重载按位与运算符 &
+	constexpr bool operator&(CollisionLayer lhs, CollisionLayer rhs)
+	{
+		using underlying = std::underlying_type_t<CollisionLayer>;
+		return (static_cast<underlying>(lhs) & static_cast<underlying>(rhs)) != 0;
 	}
 
 // ==============================================================================================
@@ -190,6 +268,7 @@ namespace fce
 	{
 	public:
 		Atlas() = default;
+		Atlas(const char* path_template, int beg_idx, int end_idx) { this->load_from_file(path_template, beg_idx, end_idx); }
 
 		~Atlas()
 		{
@@ -198,17 +277,17 @@ namespace fce
 		}
 
 		// 从指定路径模板加载目标数量纹理
-		void load(SDL_Renderer* renderer, const char* path_template, int num_of_tex, int beg_num = 0)
+		void load_from_file(const char* path_template, int beg_idx, int end_idx)
 		{
-			for (int i = beg_num; i <= num_of_tex; i++)
+			for (int i = beg_idx; i <= end_idx; i++)
 			{
 				char path_file[256];
 				sprintf_s(path_file, path_template, i);		// 补全路径
 
-				SDL_Texture* texture = IMG_LoadTexture(renderer, path_file);	// 加载纹理
+				SDL_Texture* texture = IMG_LoadTexture(Main_Renderer, path_file);	// 加载纹理
 				if (texture == nullptr)
 				{
-					std::string info = "Cannot load texture from “" + std::string(path_file) + "”\nPlease check path correctness or image's existence!";
+					std::string info = u8"Cannot load texture from “" + std::string(path_file) + u8"”\nPlease check path correctness or image's existence!";
 					throw std::runtime_error(info.c_str());
 				}
 
@@ -236,43 +315,6 @@ namespace fce
 	private:
 		std::vector<SDL_Texture*> tex_list;		// 纹理集
 	};
-
-	// 渲染层级
-	enum class RenderLayer
-	{
-		None,			// 无渲染层
-		Background,		// 背景层
-		Label,			// 游戏内部文本层
-		GameObject,		// 游戏元素层
-		Effect,			// 特效层
-		Frontground,	// 前景层
-		UI				// UI层
-	};
-
-	// 碰撞层级
-	enum class CollisionLayer
-	{
-		None = 0,				// 无碰撞层
-		Player = 1 << 0,		// 玩家层
-		Enemy = 1 << 1,			// 敌人层
-		GameMap = 1 << 2,		// 游戏地图层
-		GameObject = 1 << 3,	// 游戏元素层
-		Attack = 1 << 4,		// 攻击层
-	};
-
-	// 重载按位或运算符 |
-	constexpr CollisionLayer operator|(CollisionLayer lhs, CollisionLayer rhs)
-	{
-		using underlying = std::underlying_type_t<CollisionLayer>;
-		return static_cast<CollisionLayer>(static_cast<underlying>(lhs) | static_cast<underlying>(rhs));
-	}
-
-	// 重载按位与运算符 &
-	constexpr bool operator&(CollisionLayer lhs, CollisionLayer rhs)
-	{
-		using underlying = std::underlying_type_t<CollisionLayer>;
-		return (static_cast<underlying>(lhs) & static_cast<underlying>(rhs)) != 0;
-	}
 
 // ==============================================================================================
 //				基 础 工 具								Base	Kits
@@ -340,23 +382,30 @@ namespace fce
 	// 时钟
 	class Clock
 	{
+		using clock_t = std::chrono::steady_clock;
+		using ms_t = std::chrono::milliseconds;
+
 	public:
 		Clock()
 		{
 			this->target_fps = 60;			// 默认60帧
 			this->target_time = 1000 / target_fps;
-			this->last_time = std::chrono::steady_clock::now();
+			this->last_time = clock_t::now();
 			this->delta_time = 0;
 			this->time_scale = 1.0f;
+
+			this->global_start_time = clock_t::now();
 		}
 
 		Clock(int fps_limit)
 		{
 			this->target_fps = fps_limit;	// 设置目标FPS
 			this->target_time = 1000 / target_fps;
-			this->last_time = std::chrono::steady_clock::now();
+			this->last_time = clock_t::now();
 			this->delta_time = 0;
 			this->time_scale = 1.0f;
+
+			this->global_start_time = clock_t::now();
 		}
 
 		~Clock() = default;
@@ -364,25 +413,24 @@ namespace fce
 		// 时钟开始计时
 		void start_frame()
 		{
-			auto currentTime = std::chrono::steady_clock::now();
-			delta_time = static_cast<float>(
-				std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - last_time).count());
+			auto currentTime = clock_t::now();
+			delta_time = static_cast<float>(std::chrono::duration_cast<ms_t>(currentTime - last_time).count());
 			last_time = currentTime;
 		}
 
 		// 时钟结束计时
 		void end_frame() const
 		{
-			auto currentTime = std::chrono::steady_clock::now();
+			auto currentTime = clock_t::now();
 			// 获取经过时间
-			auto elapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - last_time).count();
+			auto elapsedTime = std::chrono::duration_cast<ms_t>(currentTime - last_time).count();
 
 			// 如果经过时间小于帧间隔就休眠
 			if (elapsedTime < target_time)
-				std::this_thread::sleep_for(std::chrono::milliseconds(target_time - elapsedTime));
+				std::this_thread::sleep_for(ms_t(target_time - elapsedTime));
 		}
 
-		// 设置是否垂直同步
+		// 设置是否垂直同步（默认false）
 		void set_VSync(bool is_abled)
 		{
 			if (is_abled)
@@ -405,6 +453,16 @@ namespace fce
 			this->target_fps = fps_limit;		// 设置目标FPS
 			this->target_time = 1000 / fps_limit;
 		}
+
+		// 获取全局经过时间
+		float get_global_lastTime() const
+		{
+			auto global_current_time = clock_t::now();
+			return static_cast<float>(std::chrono::duration_cast<ms_t>(global_current_time - global_start_time).count());
+		}
+
+		// 重置全局经过时间
+		void restart_global() { this->global_start_time = clock_t::now(); }
 
 		// 获取FPS
 		int getFPS() const { return (int)(1000 / delta_time); }
@@ -436,11 +494,12 @@ namespace fce
 		}
 
 	private:
-		int target_fps;											// 目标FPS
-		int target_time;										// 目标帧间隔
-		std::chrono::steady_clock::time_point last_time;		// 经过时间
-		float delta_time;										// 单帧间隔
-		float time_scale;										// 时间缩放
+		int target_fps;		// 目标FPS
+		int target_time;	// 目标帧间隔
+		clock_t::time_point last_time;			// 经过时间
+		clock_t::time_point global_start_time;	// 全局起始时间
+		float delta_time;	// 单帧间隔
+		float time_scale;	// 时间缩放
 	};
 
 	// 计时器
@@ -548,6 +607,19 @@ namespace fce
 				float x = sqrtf(radius * radius - y * y);
 				SDL_RenderLine(renderer, centerX - x, centerY + y, centerX + x, centerY + y);
 			}
+		}
+
+		// 摆动函数（k为振幅）
+		inline float swing(float min, float max, float k)
+		{
+			if (max < min) std::swap(min, max);
+			if (k < 0) k = -k;
+
+			static Clock _clock;
+			float dt = _clock.get_global_lastTime() * 0.001f; // 转换为秒
+
+			// 摆动区间 = (max-min)÷2 * sin(dt*k) + (max+min)÷2
+			return (max - min) / 2.0f * std::sin(dt * k) + (max + min) / 2.0f;
 		}
 	};
 
@@ -771,6 +843,7 @@ namespace fce
 		Animation()
 		{
 			timer.set_one_shot(false);
+			timer.set_wait_time(0.1f);	// 默认帧间隔0.1f
 			timer.set_on_timeout([&]()
 				{
 					idx_frame++;
@@ -797,7 +870,7 @@ namespace fce
 		// 设置动画是否循环（默认true）
 		void set_loop(bool is_loop) { this->is_loop = is_loop; }
 
-		// 设置动画帧间隔
+		// 设置动画帧间隔（默认0.1）
 		void set_interval(float interval) { timer.set_wait_time(interval); }
 
 		// 设置动画是否翻转（默认false）
