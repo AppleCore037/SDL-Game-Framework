@@ -316,6 +316,18 @@ namespace fce
 		std::vector<SDL_Texture*> tex_list;		// 纹理集
 	};
 
+	// 状态节点
+	class StateNode
+	{
+	public:
+		StateNode() = default;
+		~StateNode() = default;
+
+		virtual void on_enter() {}					/* 进入状态 */
+		virtual void on_update(float delta) {}		/* 更新状态 */
+		virtual void on_exit() {}					/* 退出状态 */
+	};
+
 // ==============================================================================================
 //				基 础 工 具								Base	Kits
 // ==============================================================================================
@@ -436,15 +448,10 @@ namespace fce
 			if (is_abled)
 			{
 				int refresh = this->get_screen_refreshRate();
-				// printf("屏幕刷新率: %d\n", refresh);	// 打印屏幕刷新率
-
-				if (refresh)
-					this->target_time = 1000 / refresh;
-				else
-					throw custom_error(u8"Clock Error", u8"Warning: Cannot get screen refresh rate!");
+				this->target_time = 1000 / refresh;
 			}
 			else
-				this->target_time = 1000 / target_fps;		// 设置为目标FPS
+				this->target_time = 1000 / target_fps;	// 设置为目标FPS
 		}
 
 		// 设置FPS
@@ -478,8 +485,8 @@ namespace fce
 		}
 
 	private:
-		// 获取屏幕刷新率
-		int get_screen_refreshRate()
+		// 获取屏幕刷新率（获取失败默认返回60）
+		int get_screen_refreshRate() const
 		{
 			// 获取主显示器（默认显示器）
 			SDL_DisplayID display = SDL_GetPrimaryDisplay();
@@ -489,8 +496,8 @@ namespace fce
 			const SDL_DisplayMode* mode = SDL_GetCurrentDisplayMode(display);
 			if (!mode) return 0;
 
-			// 返回刷新率（如果有效，否则返回默认值）
-			return (mode->refresh_rate > 0) ? (int)mode->refresh_rate : 0;
+			// 返回刷新率（如果有效，否则返回默认值60）
+			return (mode->refresh_rate > 0) ? (int)mode->refresh_rate : 60;
 		}
 
 	private:
@@ -1006,7 +1013,7 @@ namespace fce
 		~CollisionBox() = default;
 	};
 
-	// 精灵抽象基类
+	// 精灵基类
 	class Sprite
 	{
 	public:
@@ -1059,10 +1066,10 @@ namespace fce
 			this->direction = maths::rad_to_deg(std::atan2f(dy, dx));
 		}
 
-		virtual void on_update(float delta) = 0;				// 更新逻辑
-		virtual void on_render(const Camera& camera) = 0;		// 渲染画面
-		virtual void on_input(const SDL_Event& event) = 0;		// 处理输入
-		virtual void reset_property() = 0;						// 重置角色属性4
+		virtual void on_update(float delta) {};				// 更新逻辑
+		virtual void on_render(const Camera& camera) {};	// 渲染画面
+		virtual void on_input(const SDL_Event& event) {};	// 处理输入
+		virtual void reset_property() {};					// 重置角色属性
 
 	protected:
 		Vector2 world_position;							// 位置
@@ -1097,10 +1104,6 @@ namespace fce
 
 		// 设置标签文本内容
 		void set_info(const std::string& info) { this->label_info = info; }
-
-		void on_update(float delta) override {}
-		void on_input(const SDL_Event& event) override {}
-		void reset_property() override {}
 
 		void on_render(const Camera& camera) override 
 		{ camera.render_text(world_position, label_font, label_color, ptsize, label_info.c_str()); }
@@ -1159,36 +1162,6 @@ namespace fce
 			effects["click"].second = click;
 		}
 
-		// 更新函数，默认
-		void on_update(float delta) override 
-		{
-			// 获取鼠标的屏幕坐标
-			float mouse_x, mouse_y;
-			SDL_GetMouseState(&mouse_x, &mouse_y);
-
-			// 判断鼠标是否在按钮上悬停
-			bool in_range_x = mouse_x >= world_position.x && mouse_x <= world_position.x + size.width;
-			bool in_range_y = mouse_y >= world_position.y && mouse_y <= world_position.y + size.height;
-			this->is_hovering = (in_range_x && in_range_y);
-
-			// 鼠标悬停在按钮上
-			if (is_hovering)
-			{
-				if (effects["hover"].second && !is_first_hover)
-					Mix_PlayChannel(-1, effects["hover"].second, 0);
-
-				this->is_first_hover = true;
-				this->current_texture = effects["hover"].first;
-				SDL_SetCursor(SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_POINTER));
-			}
-			else
-			{
-				this->is_first_hover = false;
-				this->current_texture = effects["normal"].first;
-				SDL_SetCursor(SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_DEFAULT));
-			}
-		}
-
 		// 渲染按钮
 		void on_render(const Camera& camera) override
 		{
@@ -1200,10 +1173,31 @@ namespace fce
 		// 处理输入事件
 		void on_input(const SDL_Event& event) override
 		{
-			// 按钮被点击
-			if (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN && event.button.button == SDL_BUTTON_LEFT)
+			// 判断鼠标是否在按钮上悬停
+			bool in_range_x = event.motion.x >= world_position.x && event.motion.x <= world_position.x + size.width;
+			bool in_range_y = event.motion.y >= world_position.y && event.motion.y <= world_position.y + size.height;
+
+			if (event.type == SDL_EVENT_MOUSE_MOTION)	// 鼠标悬停在按钮上
 			{
-				if (is_hovering)
+				if (in_range_x && in_range_y)
+				{
+					if (effects["hover"].second && !is_first_hover)
+						Mix_PlayChannel(-1, effects["hover"].second, 0);
+
+					this->is_first_hover = true;
+					this->current_texture = effects["hover"].first;
+					SDL_SetCursor(SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_POINTER));
+				}
+				else
+				{
+					this->is_first_hover = false;
+					this->current_texture = effects["normal"].first;
+					SDL_SetCursor(SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_DEFAULT));
+				}
+			}
+			if (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN && event.button.button == SDL_BUTTON_LEFT) // 按钮被点击
+			{
+				if (in_range_x && in_range_y)
 				{
 					if (effects["click"].second)
 						Mix_PlayChannel(-1, effects["click"].second, 0);
@@ -1212,10 +1206,9 @@ namespace fce
 					this->on_click();
 				}
 			}
-			// 按钮被释放
-			if (event.type == SDL_EVENT_MOUSE_BUTTON_UP && event.button.button == SDL_BUTTON_LEFT)
+			if (event.type == SDL_EVENT_MOUSE_BUTTON_UP && event.button.button == SDL_BUTTON_LEFT) // 按钮被释放
 			{
-				if (is_hovering)
+				if (in_range_x && in_range_y)
 					this->current_texture = effects["hover"].first;
 				else
 					this->current_texture = effects["normal"].first;
@@ -1228,15 +1221,14 @@ namespace fce
 		SDL_Texture* current_texture = nullptr;					// 当前显示的纹理
 		std::unordered_map<std::string, effect_pair> effects;	// 效果列表
 		std::function<void()> on_click;							// 点击回调函数
-		bool is_hovering = false;								// 是否悬停在按钮上
 	};
 
-	// 场景抽象基类
+	// 场景基类
 	class Scene
 	{
 	public:
-		Scene() = default;			// 构造函数处初始化实例化对象
-		virtual ~Scene() = default;	// 析函数出销毁实例化对象
+		Scene() = default;			 /* 构造函数处初始化实例化对象 */
+		virtual ~Scene() = default;	 /* 析函数出销毁实例化对象 */
 
 		// 获取精灵（返回指定类型模板的对象指针）
 		template <typename _CvtTy = Sprite>
@@ -1252,11 +1244,11 @@ namespace fce
 			return (_CvtTy*)sprite_pool[name];
 		}
 
-		virtual void on_enter() = 0;											  // 进入场景（对角色属性的重置）
-		virtual void on_update(float delta) = 0;								  // 更新场景
-		virtual void on_render(const Camera& cam_game, const Camera& cam_ui) = 0; // 渲染场景（一个负责渲染游戏，一个负责渲染UI）
-		virtual void on_input(const SDL_Event& event) = 0;						  // 输入事件处理
-		virtual void on_exit() = 0;												  // 退出场景（不要销毁对象）
+		virtual void on_enter() {};					/* 进入场景（对角色属性的重置）*/
+		virtual void on_update(float delta) {};		/* 更新场景 */
+		virtual void on_render(const Camera& cam_game, const Camera& cam_ui) {}; /* 渲染场景（一个负责渲染游戏，一个负责渲染UI）*/
+		virtual void on_input(const SDL_Event& event) {};	/* 输入事件处理 */
+		virtual void on_exit() {};						    /* 退出场景（不要销毁对象）*/
 
 	protected:
 		// 为精灵池中的角色进行排序，返回std::vector<Sprite*>
@@ -1292,26 +1284,13 @@ namespace fce
 				if (iterator->second == sprite)
 				{
 					this->sprite_pool.erase(iterator);
-					delete sprite;
-					return;
+					delete sprite; return;
 				}
 			}
 		}
 
 	protected:
 		std::unordered_multimap<std::string, Sprite*> sprite_pool;	// 精灵池
-	};
-
-	// 状态节点
-	class StateNode
-	{
-	public:
-		StateNode() = default;
-		~StateNode() = default;
-
-		virtual void on_enter() {}					// 进入状态
-		virtual void on_update(float delta) {}		// 更新状态
-		virtual void on_exit() {}					// 退出状态
 	};
 
 // ===========================================================================================
@@ -1742,7 +1721,7 @@ namespace fce
 		}
 
 		// 处理碰撞检测
-		inline void process_collide()
+		inline void process_collision()
 		{
 			for (auto collision_box_src : collision_box_list)
 			{
