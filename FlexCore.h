@@ -65,10 +65,10 @@ namespace fce
 	{
 		None,			// 无渲染层
 		Background,		// 背景层
+		Frontground,	// 前景层
 		Label,			// 游戏内部文本层
 		GameObject,		// 游戏元素层
 		Effect,			// 特效层
-		Frontground,	// 前景层
 		UI				// UI层
 	};
 
@@ -262,6 +262,7 @@ namespace fce
 			return Vector2(x / len, y / len);
 		}
 	};
+	using Point = Vector2;	// 坐标点
 
 	// 图集
 	class Atlas
@@ -359,18 +360,12 @@ namespace fce
 	class Random
 	{
 	public:
-		Random()
-		{
-			std::random_device rd;
-			engine.seed(rd());
-		}
-
 		// 生成 [min, max] 范围内的随机整数
 		static int randint(int min, int max)
 		{
 			if (min > max) std::swap(min, max);
 			std::uniform_int_distribution<int> dist(min, max);
-			return dist(get_engine());
+			return dist(m_instance.engine);
 		}
 
 		// 生成 [min, max] 范围内的随机浮点数
@@ -378,26 +373,91 @@ namespace fce
 		{
 			if (min > max) std::swap(min, max);
 			std::uniform_real_distribution<float> dist(min, max);
-			return dist(get_engine());
+			return dist(m_instance.engine);
 		}
 
 	private:
-		static std::mt19937& get_engine()
-		{
-			static Random _Instance;
-			return _Instance.engine;
-		}
+		Random() { engine.seed(std::random_device()()); }
+		~Random() = default;
 
-		std::mt19937 engine;
+	private:
+		static Random m_instance;	// 单例实例
+		std::mt19937 engine;		// 随机数引擎
 	};
+	inline Random Random::m_instance;
 
-	// 时钟
+	// 全局游戏时钟
 	class Clock
 	{
 		using clock_t = std::chrono::steady_clock;
 		using ms_t = std::chrono::milliseconds;
 
 	public:
+		// 时钟开始计时
+		static void start_frame()
+		{
+			auto currentTime = clock_t::now();
+			m_instance.delta_time = static_cast<float>(std::chrono::duration_cast<ms_t>(
+				currentTime - m_instance.last_time).count());
+			m_instance.last_time = currentTime;
+		}
+
+		// 时钟结束计时
+		static void end_frame()
+		{
+			auto currentTime = clock_t::now();
+			// 获取经过时间
+			auto elapsedTime = std::chrono::duration_cast<ms_t>(currentTime - m_instance.last_time).count();
+
+			// 如果经过时间小于帧间隔就休眠
+			if (elapsedTime < m_instance.target_time)
+				std::this_thread::sleep_for(ms_t(m_instance.target_time - elapsedTime));
+		}
+
+		// 设置是否垂直同步（默认false）
+		static void set_VSync(bool is_abled)
+		{
+			if (is_abled)
+			{
+				int refresh = m_instance.get_screen_refreshRate();
+				m_instance.target_time = 1000 / refresh;
+			}
+			else
+				m_instance.target_time = 1000 / m_instance.target_fps;	// 设置为目标FPS
+		}
+
+		// 设置FPS
+	 	static void setFPS(int fps_limit)
+		{
+			m_instance.target_fps = fps_limit;		// 设置目标FPS
+			m_instance.target_time = 1000 / fps_limit;
+		}
+
+		// 获取全局经过时间（秒）
+		static float get_global_time()
+		{
+			auto global_current_time = clock_t::now();
+			return static_cast<float>(std::chrono::duration_cast<ms_t>(
+				global_current_time - m_instance.global_start_time).count()) * 0.001f; // 转换为秒
+		}
+
+		// 重置全局经过时间
+		static void restart_global_time() { m_instance.global_start_time = clock_t::now(); }
+
+		// 获取FPS
+		static int getFPS() { return (int)(1000 / m_instance.delta_time); }
+
+		// 获取帧间隔
+		static float get_DeltaTime() { return (m_instance.delta_time / 1000.0f) * m_instance.time_scale; }
+
+		// 设置时间缩放
+		static void set_time_scale(float scale)
+		{
+			if (scale <= 0.0f) return;
+			m_instance.time_scale = scale;
+		}
+
+	private:
 		Clock()
 		{
 			this->target_fps = 60;			// 默认60帧
@@ -409,82 +469,8 @@ namespace fce
 			this->global_start_time = clock_t::now();
 		}
 
-		Clock(int fps_limit)
-		{
-			this->target_fps = fps_limit;	// 设置目标FPS
-			this->target_time = 1000 / target_fps;
-			this->last_time = clock_t::now();
-			this->delta_time = 0;
-			this->time_scale = 1.0f;
-
-			this->global_start_time = clock_t::now();
-		}
-
 		~Clock() = default;
 
-		// 时钟开始计时
-		void start_frame()
-		{
-			auto currentTime = clock_t::now();
-			delta_time = static_cast<float>(std::chrono::duration_cast<ms_t>(currentTime - last_time).count());
-			last_time = currentTime;
-		}
-
-		// 时钟结束计时
-		void end_frame() const
-		{
-			auto currentTime = clock_t::now();
-			// 获取经过时间
-			auto elapsedTime = std::chrono::duration_cast<ms_t>(currentTime - last_time).count();
-
-			// 如果经过时间小于帧间隔就休眠
-			if (elapsedTime < target_time)
-				std::this_thread::sleep_for(ms_t(target_time - elapsedTime));
-		}
-
-		// 设置是否垂直同步（默认false）
-		void set_VSync(bool is_abled)
-		{
-			if (is_abled)
-			{
-				int refresh = this->get_screen_refreshRate();
-				this->target_time = 1000 / refresh;
-			}
-			else
-				this->target_time = 1000 / target_fps;	// 设置为目标FPS
-		}
-
-		// 设置FPS
-		void setFPS(int fps_limit)
-		{
-			this->target_fps = fps_limit;		// 设置目标FPS
-			this->target_time = 1000 / fps_limit;
-		}
-
-		// 获取全局经过时间
-		float get_global_lastTime() const
-		{
-			auto global_current_time = clock_t::now();
-			return static_cast<float>(std::chrono::duration_cast<ms_t>(global_current_time - global_start_time).count());
-		}
-
-		// 重置全局经过时间
-		void restart_global() { this->global_start_time = clock_t::now(); }
-
-		// 获取FPS
-		int getFPS() const { return (int)(1000 / delta_time); }
-
-		// 获取帧间隔
-		float get_DeltaTime() const { return (delta_time / 1000.0f) * time_scale; }
-
-		// 设置时间缩放
-		void set_time_scale(float scale)
-		{
-			if (scale <= 0.0f) return;
-			this->time_scale = scale;
-		}
-
-	private:
 		// 获取屏幕刷新率（获取失败默认返回60）
 		int get_screen_refreshRate() const
 		{
@@ -501,6 +487,8 @@ namespace fce
 		}
 
 	private:
+		static Clock m_instance;	// 单例实例
+
 		int target_fps;		// 目标FPS
 		int target_time;	// 目标帧间隔
 		clock_t::time_point last_time;			// 经过时间
@@ -508,6 +496,7 @@ namespace fce
 		float delta_time;	// 单帧间隔
 		float time_scale;	// 时间缩放
 	};
+	inline Clock Clock::m_instance;
 
 	// 计时器
 	class Timer
@@ -616,17 +605,15 @@ namespace fce
 			}
 		}
 
-		// 摆动函数（k为振幅）
-		inline float swing(float min, float max, float k)
+		// 摆动函数
+		inline float swing(float min, float max, float strength)
 		{
 			if (max < min) std::swap(min, max);
-			if (k < 0) k = -k;
+			if (strength < 0) strength = -strength;
 
-			static Clock _clock;
-			float dt = _clock.get_global_lastTime() * 0.001f; // 转换为秒
-
+			float dt = Clock::get_global_time();
 			// 摆动区间 = (max-min)÷2 * sin(dt*k) + (max+min)÷2
-			return (max - min) / 2.0f * std::sin(dt * k) + (max + min) / 2.0f;
+			return (max - min) / 2.0f * std::sin(dt * strength) + (max + min) / 2.0f;
 		}
 	};
 
