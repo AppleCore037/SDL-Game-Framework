@@ -36,28 +36,29 @@ namespace fce
 	constexpr SDL_Color Color_White = { 255, 255, 255, 255 };	// 白
 	constexpr SDL_Color Color_Black = { 0, 0, 0, 255 };			// 黑
 	constexpr SDL_Color Color_Gray = { 128, 128, 128, 255 };	// 灰
+	constexpr SDL_Color Color_Yellow = { 255, 255, 0, 255 };	// 黄
 
 // ==============================================================================================
 //				基 础 枚 举 类 型						Base Enum Types
-// ==================================================================================================
+// ==============================================================================================
 
 	// 窗口标签
 	enum class WindowFlags
 	{
-		shown = SDL_EVENT_WINDOW_SHOWN,			// 显示
-		hidden = SDL_EVENT_WINDOW_HIDDEN,		// 隐藏
-		resizable = SDL_EVENT_WINDOW_RESIZED,	// 可调整大小
-		maximized = SDL_EVENT_WINDOW_MAXIMIZED,	// 最大化
-		minimized = SDL_EVENT_WINDOW_MINIMIZED,	// 最小化
-		fullscreen = SDL_WINDOW_FULLSCREEN,		// 全屏
+		Shown = SDL_EVENT_WINDOW_SHOWN,			// 显示
+		Hidden = SDL_EVENT_WINDOW_HIDDEN,		// 隐藏
+		Resizable = SDL_EVENT_WINDOW_RESIZED,	// 可调整大小
+		Maximized = SDL_EVENT_WINDOW_MAXIMIZED,	// 最大化
+		Minimized = SDL_EVENT_WINDOW_MINIMIZED,	// 最小化
+		Fullscreen = SDL_WINDOW_FULLSCREEN,		// 全屏
 	};
 
 	// 消息框类型
-	enum class MsgBoxType
+	enum class MsgBoxFlags
 	{
-		Info,		// 信息
-		Warning,	// 警告
-		Error,		// 错误
+		Info = SDL_MESSAGEBOX_INFORMATION,	// 信息
+		Warning = SDL_MESSAGEBOX_WARNING,	// 警告
+		Error = SDL_MESSAGEBOX_ERROR,		// 错误
 	};
 
 	// 渲染层级
@@ -88,7 +89,7 @@ namespace fce
 // ==============================================================================================
 
 	// 初始化基础窗口设置
-	inline void Init_Graphic(const std::string& title, int w, int h, WindowFlags flags = WindowFlags::shown)
+	inline void Init_Graphic(const std::string& title, int w, int h, WindowFlags flags = WindowFlags::Shown)
 	{
 		// 初始化SDL相关模块
 		SDL_Init(SDL_INIT_EVERYTHING);
@@ -167,21 +168,13 @@ namespace fce
 	}
 
 	// 显示消息框
-	inline void Show_MessageBox(MsgBoxType type, const char* title, const char* message)
+	inline void Show_MessageBox(MsgBoxFlags type, const char* title, const char* message)
 	{
-		SDL_MessageBoxFlags flag = SDL_MESSAGEBOX_INFORMATION;	// 默认信息框类型
-		switch (type)
-		{
-		case fce::MsgBoxType::Info:		flag = SDL_MESSAGEBOX_INFORMATION;	break;
-		case fce::MsgBoxType::Warning:	flag = SDL_MESSAGEBOX_WARNING;		break;
-		case fce::MsgBoxType::Error:	flag = SDL_MESSAGEBOX_ERROR;		break;
-		}
-
 		// 检测主窗口是否存在
 		if (Main_Window != nullptr)
-			SDL_ShowSimpleMessageBox(flag, title, message, Main_Window);
+			SDL_ShowSimpleMessageBox((SDL_MessageBoxFlags)type, title, message, Main_Window);
 		else
-			SDL_ShowSimpleMessageBox(flag, title, message, nullptr);
+			SDL_ShowSimpleMessageBox((SDL_MessageBoxFlags)type, title, message, nullptr);
 	}
 
 	// 重载按位或运算符 |
@@ -621,8 +614,8 @@ namespace fce
 // 				基 础 元 素							 base	Elements
 // =========================================================================================
 
-	// 摄像机
-	class Camera
+	// 2D摄像机
+	class Camera2D
 	{
 	public:
 		// 跟随方式
@@ -636,7 +629,7 @@ namespace fce
 		};
 
 	public:
-		Camera()
+		Camera2D()
 		{
 			timer_shake.set_one_shot(true);
 			timer_shake.set_on_timeout([&]()
@@ -646,13 +639,13 @@ namespace fce
 				});
 		}
 
-		~Camera() = default;
+		~Camera2D() = default;
 
 		// 获取摄像机世界坐标(中心点)
-		const Vector2& get_position() const { return world_position; }
+		const Point& get_position() const { return world_position; }
 
 		// 设置摄像机世界坐标(中心点)
-		void set_position(const Vector2& world_pos) { this->base_position = world_pos; }
+		void set_position(const Point& world_pos) { this->base_position = world_pos; }
 
 		// 设置摄像机缩放
 		void set_zoom(float scale) { this->zoom = scale; }
@@ -663,7 +656,7 @@ namespace fce
 		// 重置摄像机
 		void reset()
 		{
-			world_position = base_position = shake_position = Vector2(0, 0);
+			world_position = base_position = shake_position = Point(0, 0);
 			this->zoom = 1.0f;		// 重置缩放为1.0
 		}
 
@@ -695,22 +688,22 @@ namespace fce
 		}
 
 		// 绘制线段
-		void render_shape(const Vector2& start, const Vector2& end, SDL_Color color) const
+		void render_shape(const Point& start, const Point& end, SDL_Color color) const
 		{
 			SDL_SetRenderDrawColor(Main_Renderer, color.r, color.g, color.b, color.a);
 
-			Vector2 start_win = this->world_to_screen(start);
-			Vector2 end_win = this->world_to_screen(end);
+			Point start_win = this->world_to_screen(start);
+			Point end_win = this->world_to_screen(end);
 			SDL_RenderLine(Main_Renderer, start_win.x, start_win.y, end_win.x, end_win.y);
 		}
 
 		// 绘制矩形
-		void render_shape(const Vector2& world_pos, const Size& size, SDL_Color color, bool is_filled) const
+		void render_shape(const Point& world_pos, const Size& size, SDL_Color color, bool is_filled) const
 		{
 			SDL_SetRenderDrawColor(Main_Renderer, color.r, color.g, color.b, color.a);
 
 			// 创建屏幕中的渲染矩形
-			Vector2 screen_pos = this->world_to_screen(world_pos);
+			Point screen_pos = this->world_to_screen(world_pos);
 			SDL_FRect rect_dst_win = { screen_pos.x, screen_pos.y, size.width * zoom, size.height * zoom };
 
 			if (is_filled)
@@ -720,10 +713,10 @@ namespace fce
 		}
 
 		// 绘制圆形
-		void render_shape(const Vector2& world_pos, float radius, SDL_Color color, bool is_filled) const
+		void render_shape(const Point& world_pos, float radius, SDL_Color color, bool is_filled) const
 		{
 			SDL_SetRenderDrawColor(Main_Renderer, color.r, color.g, color.b, color.a);
-			Vector2 screen_pos = this->world_to_screen(world_pos);
+			Point screen_pos = this->world_to_screen(world_pos);
 
 			if (is_filled)
 				maths::Draw_FilledCircle(Main_Renderer, screen_pos.x, screen_pos.y, radius * zoom);
@@ -732,37 +725,37 @@ namespace fce
 		}
 
 		// 渲染文字
-		void render_text(const Vector2& world_pos, TTF_Font* font, SDL_Color color, 
+		void render_text(const Point& world_pos, TTF_Font* font, SDL_Color color,
 			float ptsize, const std::string& info) const
 		{
 			TTF_Text* text_win = TTF_CreateText(Main_TextEngine, font, info.c_str(), NULL);
 			TTF_SetTextColor(text_win, color.r, color.g, color.b, color.a);
 
-			Vector2 screen_pos = this->world_to_screen(world_pos);
+			Point screen_pos = this->world_to_screen(world_pos);
 			TTF_SetFontSize(font, ptsize * zoom);
 
 			TTF_DrawRendererText(text_win, screen_pos.x, screen_pos.y);
 		}
 
 		// 跟随角色
-		void look_at(const Vector2& target_pos, int style)
+		void look_at(const Point& target_pos, int style)
 		{
 			if (style & None) return;
 
-			if (style & Camera::Static_Follow)	// 静态跟随
+			if (style & Camera2D::Static_Follow)	// 静态跟随
 			{
-				if (style & Camera::Only_X)
+				if (style & Camera2D::Only_X)
 					this->base_position.x = target_pos.x;
-				else if (style & Camera::Only_Y)
+				else if (style & Camera2D::Only_Y)
 					this->base_position.y = target_pos.y;
 				else
 					this->base_position = target_pos;
 			}
-			else if (style & Camera::Smooth_Follow)		// 平滑跟随
+			else if (style & Camera2D::Smooth_Follow)		// 平滑跟随
 			{
-				if (style & Camera::Only_X)
+				if (style & Camera2D::Only_X)
 					this->base_position.x = maths::lerp(base_position.x, target_pos.x, smooth_strength);
-				else if (style & Camera::Only_Y)
+				else if (style & Camera2D::Only_Y)
 					this->base_position.y = maths::lerp(base_position.y, target_pos.y, smooth_strength);
 				else
 				{
@@ -773,21 +766,21 @@ namespace fce
 		}
 
 		// 窗口坐标转世界坐标
-		Vector2 screen_to_world(const Vector2& screen_pos) const
+		Point screen_to_world(const Point& screen_pos) const
 		{
 			// 世界坐标 = (窗口坐标 - 屏幕中心点) / 缩放因子 + 摄像机坐标
 			float world_x = (screen_pos.x - this->get_screen_center().x) / zoom + world_position.x;
 			float world_y = (screen_pos.y - this->get_screen_center().y) / zoom + world_position.y;
-			return Vector2(world_x, world_y);
+			return Point(world_x, world_y);
 		}
 
 		// 世界坐标转窗口坐标
-		Vector2 world_to_screen(const Vector2& world_pos) const
+		Point world_to_screen(const Point& world_pos) const
 		{
 			// 渲染坐标 = 屏幕中心点 + (世界坐标 - 摄像机坐标) * 缩放因子
 			float screen_x = this->get_screen_center().x + (world_pos.x - world_position.x) * zoom;
 			float screen_y = this->get_screen_center().y + (world_pos.y - world_position.y) * zoom;
-			return Vector2(screen_x, screen_y);
+			return Point(screen_x, screen_y);
 		}
 
 		// 更新摄像机
@@ -808,18 +801,18 @@ namespace fce
 
 	private:
 		// 获取屏幕中心点
-		Vector2 get_screen_center() const
+		Point get_screen_center() const
 		{
 			int screen_w, screen_h;
 			SDL_GetWindowSize(Main_Window, &screen_w, &screen_h);		// 计算屏幕宽高
-			Vector2 screen_center = Vector2(screen_w / 2.0f, screen_h / 2.0f);	// 获取屏幕中心点
+			Point screen_center = Point(screen_w / 2.0f, screen_h / 2.0f);	// 获取屏幕中心点
 			return screen_center;
 		}
 
 	private:
-		Vector2 world_position;				// 摄像机最终世界坐标
-		Vector2 shake_position;				// 抖动位置
-		Vector2 base_position;				// 基础位置
+		Point world_position;				// 摄像机最终世界坐标
+		Point shake_position;				// 抖动位置
+		Point base_position;				// 基础位置
 
 		Timer timer_shake;					// 抖动计时器
 		bool is_shaking = false;			// 是否抖动
@@ -856,7 +849,7 @@ namespace fce
 		void reset() { timer.restart(); idx_frame = 0; }
 
 		// 设置动画世界坐标
-		void set_position(const Vector2& world_pos) { this->world_position = world_pos; }
+		void set_position(const Point& world_pos) { this->world_position = world_pos; }
 
 		// 设置动画方向
 		void set_rotation(float angle) { this->angle = static_cast<double>(angle); }
@@ -919,10 +912,10 @@ namespace fce
 		}
 
 		// 渲染动画
-		void on_render(const Camera& camera) const
+		void on_render(const Camera2D& camera) const
 		{
 			const Frame& frame = frame_list[idx_frame];
-			const Vector2& pos_camera = camera.get_position();
+			const Point& pos_camera = camera.get_position();
 
 			SDL_FRect rect_dst{};
 			rect_dst.x = world_position.x - frame.rect_src.w * (center.x / frame.rect_src.w);
@@ -948,7 +941,7 @@ namespace fce
 		};
 
 	private:
-		Vector2 world_position;				// 世界坐标
+		Point world_position;				// 世界坐标
 		double angle = 0;					// 角度
 		SDL_FPoint center = { 0 };			// 中心点
 		bool is_flip = false;				// 是否反转
@@ -985,11 +978,11 @@ namespace fce
 		const Size& get_size() const { return this->size; }
 
 		// 设置碰撞箱世界位置
-		void set_position(const Vector2& world_pos) { this->world_position = world_pos; }
+		void set_position(const Point& world_pos) { this->world_position = world_pos; }
 
 	private:
 		Size size = { 0, 0 };								// 碰撞箱大小
-		Vector2 world_position;								// 碰撞箱世界坐标
+		Point world_position;								// 碰撞箱世界坐标
 		bool enabled = true;								// 是否启用碰撞检测
 		std::function<void(CollisionLayer)> on_collide;		// 碰撞回调函数
 		CollisionLayer layer_src = CollisionLayer::None;	// 自身碰撞层
@@ -1010,17 +1003,19 @@ namespace fce
 		// 获取速度
 		const Vector2& get_velocity() const { return this->velocity; }
 
+		void set_velocity(const Vector2& velocity) { this->velocity = velocity; }
+
 		// 获取方向
 		const float get_direction() const { return this->direction; }
 
 		// 设置方向
 		void set_direction(float dir) { this->direction = dir; }
 
-		// 获取位置
-		const Vector2& get_position() const { return this->world_position; }
+		// 获取世界坐标
+		const Point& get_position() const { return this->world_position; }
 
-		// 设置位置
-		void set_position(const Vector2& world_pos) { this->world_position = world_pos; }
+		// 设置世界坐标
+		void set_position(const Point& world_pos) { this->world_position = world_pos; }
 
 		// 设置渲染层
 		void set_render_layer(RenderLayer layer) { this->render_layer = layer; }
@@ -1032,7 +1027,7 @@ namespace fce
 		CollisionBox* get_collision_box() const { return this->hit_box; }
 
 		// 面向指定坐标点
-		void point_torwards(const Vector2& target)
+		void point_torwards(const Point& target)
 		{
 			float dx = target.x - world_position.x;
 			float dy = target.y - world_position.y;
@@ -1040,11 +1035,11 @@ namespace fce
 		}
 
 		// 面向鼠标指针
-		void point_mousePointer(const Camera& camera)
+		void point_mousePointer(const Camera2D& camera)
 		{
 			float mouse_x, mouse_y;
 			SDL_GetMouseState(&mouse_x, &mouse_y);
-			auto mouse_world_pos = camera.screen_to_world(Vector2(mouse_x, mouse_y));
+			auto mouse_world_pos = camera.screen_to_world(Point(mouse_x, mouse_y));
 
 			float dx = mouse_world_pos.x - world_position.x;
 			float dy = mouse_world_pos.y - world_position.y;
@@ -1054,16 +1049,16 @@ namespace fce
 		}
 
 		virtual void on_update(float delta) {};				// 更新逻辑
-		virtual void on_render(const Camera& camera) {};	// 渲染画面
+		virtual void on_render(const Camera2D& camera) {};	// 渲染画面
 		virtual void on_input(const SDL_Event& event) {};	// 处理输入
 		virtual void reset_property() {};					// 重置角色属性
 
 	protected:
-		Vector2 world_position;							// 位置
-		Vector2 velocity;								// 速度
-		float direction = 0.0f;							// 方向
-		CollisionBox* hit_box = nullptr;				// 自身碰撞箱
-		RenderLayer render_layer = RenderLayer::None;	// 渲染层
+		Point world_position;						  // 位置
+		Vector2 velocity;							  // 速度
+		float direction = 0.0f;						  // 方向
+		CollisionBox* hit_box = nullptr;			  // 自身碰撞箱
+		RenderLayer render_layer = RenderLayer::None; // 渲染层
 	};
 
 	// 标签
@@ -1073,7 +1068,7 @@ namespace fce
 		Label() { this->render_layer = RenderLayer::Label; }
 		~Label() = default;
 
-		Label(const Vector2& position, TTF_Font* font, SDL_Color color, float size, const std::string& info) 
+		Label(const Point& position, TTF_Font* font, SDL_Color color, float size, const std::string& info) 
 			: label_color(color), label_font(font), ptsize(size), label_info(info) 
 		{
 			this->world_position = position;
@@ -1092,7 +1087,7 @@ namespace fce
 		// 设置标签文本内容
 		void set_info(const std::string& info) { this->label_info = info; }
 
-		void on_render(const Camera& camera) override 
+		void on_render(const Camera2D& camera) override
 		{ camera.render_text(world_position, label_font, label_color, ptsize, label_info.c_str()); }
 
 	private:
@@ -1111,7 +1106,7 @@ namespace fce
 		Button() = default;
 		~Button() = default;
 
-		Button(const Vector2& pos, const Size& size) : size(size)
+		Button(const Point& pos, const Size& size) : size(size)
 		{
 			this->world_position = pos;
 			this->render_layer = RenderLayer::UI;
@@ -1150,7 +1145,7 @@ namespace fce
 		}
 
 		// 渲染按钮
-		void on_render(const Camera& camera) override
+		void on_render(const Camera2D& camera) override
 		{
 			if (!current_texture) return;	// 如果没有设置纹理则不渲染
 			SDL_FRect rect_dst_win = { world_position.x, world_position.y, size.width, size.height };
@@ -1233,7 +1228,8 @@ namespace fce
 
 		virtual void on_enter() {};					/* 进入场景（对角色属性的重置）*/
 		virtual void on_update(float delta) {};		/* 更新场景 */
-		virtual void on_render(const Camera& cam_game, const Camera& cam_ui) {}; /* 渲染场景（一个负责渲染游戏，一个负责渲染UI）*/
+		virtual void on_render(const Camera2D& camera_game, 
+			const Camera2D& camera_ui) {}; /* 渲染场景（一个负责渲染游戏，一个负责渲染UI）*/
 		virtual void on_input(const SDL_Event& event) {};	/* 输入事件处理 */
 		virtual void on_exit() {};						    /* 退出场景（不要销毁对象）*/
 
@@ -1346,7 +1342,7 @@ namespace fce
 		}
 
 		// 渲染动画
-		void on_render(const Camera& camera)
+		void on_render(const Camera2D& camera)
 		{
 			if (current_animation)
 				current_animation->on_render(camera);
@@ -1649,7 +1645,7 @@ namespace fce
 		}
 
 		// 渲染当前场景
-		void on_render(const Camera& camera_game, const Camera& camera_ui)
+		void on_render(const Camera2D& camera_game, const Camera2D& camera_ui)
 		{
 			if (current_scene)
 				current_scene->on_render(camera_game, camera_ui);
@@ -1739,12 +1735,12 @@ namespace fce
 		}
 
 		// 调试碰撞箱
-		inline void debug_collision_box(const Camera& camera)
+		inline void debug_collision_box(const Camera2D& camera)
 		{
 			for (auto collision_box : collision_box_list)
 			{
 				// 定义碰撞箱渲染矩形属性
-				Vector2 rect_pos = { collision_box->world_position.x - collision_box->size.width / 2.0f, collision_box->world_position.y - collision_box->size.height / 2.0f, };
+				Point rect_pos = { collision_box->world_position.x - collision_box->size.width / 2.0f, collision_box->world_position.y - collision_box->size.height / 2.0f, };
 				Size rect_size = { collision_box->size.width, collision_box->size.height };
 
 				// 定义碰撞箱渲染颜色
