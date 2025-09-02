@@ -119,7 +119,7 @@ namespace fce
 	}
 
 	// 释放框架内置资源 [包含：Main_TextEngine、Main_Renderer、Main_Window]
-	inline void Clean_Up()
+	inline void release_resources()
 	{
 		if (Main_TextEngine)
 		{
@@ -200,11 +200,10 @@ namespace fce
 	{
 		Size() = default;
 		~Size() = default;
-		Size(float w, float h) :
-			width(w), height(h) {}
+		Size(float w, float h) : w(w), h(h) {}
 
-		float width;
-		float height;
+		float w;
+		float h;
 	};
 
 	// 二维向量
@@ -386,7 +385,7 @@ namespace fce
 		using ms_t = std::chrono::milliseconds;
 
 	public:
-		// 时钟开始计时
+		// 起始当前帧计时
 		static void start_frame()
 		{
 			auto currentTime = clock_t::now();
@@ -395,7 +394,7 @@ namespace fce
 			m_instance.last_time = currentTime;
 		}
 
-		// 时钟结束计时
+		// 结束当前帧计时
 		static void end_frame()
 		{
 			auto currentTime = clock_t::now();
@@ -446,8 +445,8 @@ namespace fce
 		// 设置时间缩放
 		static void set_time_scale(float scale)
 		{
-			if (scale <= 0.0f) return;
-			m_instance.time_scale = scale;
+			if (scale <= 0.0f) m_instance.time_scale = 1.0f;
+			else m_instance.time_scale = scale;
 		}
 
 	private:
@@ -490,6 +489,86 @@ namespace fce
 		float time_scale;	// 时间缩放
 	};
 	inline Clock Clock::m_instance;
+
+	// 数学运算工具
+	namespace maths
+	{
+		// 角度转弧度
+		inline float deg_to_rad(float degree) noexcept { return degree * PAI / 180.0f; }
+
+		// 弧度转角度
+		inline float rad_to_deg(float radian) noexcept { return radian * 180.0f / PAI; }
+
+		// 插值函数
+		inline float lerp(float current, float target, float t) noexcept { return current + (target - current) * t; }
+
+		// 计算两点距离
+		inline float distance_to(const Vector2& pos_1, const Vector2& pos_2)
+		{
+			float dx = pos_1.x - pos_2.x;
+			float dy = pos_1.y - pos_2.y;
+			return sqrtf((dx * dx) + (dy * dy));
+		}
+
+		// 摆动函数
+		inline float swing(float min, float max, float strength)
+		{
+			if (max < min) std::swap(min, max);
+			if (strength < 0) strength = -strength;
+
+			float dt = Clock::get_global_time();
+			// 摆动区间 = (max-min)÷2 * sin(dt*k) + (max+min)÷2
+			return (max - min) / 2.0f * std::sin(dt * strength) + (max + min) / 2.0f;
+		}
+
+		// 绘制空心圆
+		inline void Draw_Circle(float center_x, float center_y, float radius)
+		{
+			float x = radius; float y = 0; float err = 0;
+			while (x >= y)
+			{
+				SDL_RenderPoint(Main_Renderer, center_x + x, center_y + y);
+				SDL_RenderPoint(Main_Renderer, center_x + y, center_y + x);
+				SDL_RenderPoint(Main_Renderer, center_x - y, center_y + x);
+				SDL_RenderPoint(Main_Renderer, center_x - x, center_y + y);
+				SDL_RenderPoint(Main_Renderer, center_x - x, center_y - y);
+				SDL_RenderPoint(Main_Renderer, center_x - y, center_y - x);
+				SDL_RenderPoint(Main_Renderer, center_x + y, center_y - x);
+				SDL_RenderPoint(Main_Renderer, center_x + x, center_y - y);
+
+				if (err <= 0) { y += 1; err += 2 * y + 1; }
+				if (err > 0) { x -= 1; err -= 2 * x + 1; }
+			}
+		}
+
+		// 绘制实心圆
+		inline void Draw_FilledCircle(float center_x, float center_y, float radius)
+		{
+			for (float y = -radius; y <= radius; y += 1.0f)
+			{
+				float x = sqrtf(radius * radius - y * y);
+				SDL_RenderLine(Main_Renderer, center_x - x, center_y + y, center_x + x, center_y + y);
+			}
+		}
+
+		// 绘制空心矩形
+		inline void Draw_Rect(float center_x, float center_y, float w, float h)
+		{
+			SDL_FRect rect = { center_x - w / 2.0f, center_y - h / 2.0f, w, h };
+			SDL_RenderRect(Main_Renderer, &rect);
+		}
+
+		// 绘制实心矩形
+		inline void Draw_FilledRect(float center_x, float center_y, float w, float h)
+		{
+			SDL_FRect rect = { center_x - w / 2.0f, center_y - h / 2.0f, w, h };
+			SDL_RenderFillRect(Main_Renderer, &rect);
+		}
+	};
+
+// =========================================================================================
+// 				基 础 元 素							 base	Elements
+// =========================================================================================
 
 	// 计时器
 	class Timer
@@ -541,78 +620,6 @@ namespace fce
 		bool one_shot = false;				// 是否单词触发
 		std::function<void()> on_timeout;	// 回调函数
 	};
-
-	// 数学运算工具
-	namespace maths
-	{
-		// 角度转弧度
-		inline float deg_to_rad(float degree) noexcept { return degree * PAI / 180.0f; }
-
-		// 弧度转角度
-		inline float rad_to_deg(float radian) noexcept { return radian * 180.0f / PAI; }
-
-		// 插值函数
-		inline float lerp(float current, float target, float t) noexcept { return current + (target - current) * t; }
-
-		// 计算两点距离
-		inline float distance_to(const Vector2& pos_1, const Vector2& pos_2)
-		{
-			float dx = pos_1.x - pos_2.x;
-			float dy = pos_1.y - pos_2.y;
-			return sqrtf((dx * dx) + (dy * dy));
-		}
-
-		// 绘制空心圆
-		inline void Draw_Circle(SDL_Renderer* renderer, float pos_x, float pos_y, float radius)
-		{
-			// 处理圆形的中心点坐标
-			float centerX = pos_x + radius; float centerY = pos_y + radius;
-
-			float x = radius; float y = 0; float err = 0;
-			while (x >= y)
-			{
-				SDL_RenderPoint(renderer, centerX + x, centerY + y);
-				SDL_RenderPoint(renderer, centerX + y, centerY + x);
-				SDL_RenderPoint(renderer, centerX - y, centerY + x);
-				SDL_RenderPoint(renderer, centerX - x, centerY + y);
-				SDL_RenderPoint(renderer, centerX - x, centerY - y);
-				SDL_RenderPoint(renderer, centerX - y, centerY - x);
-				SDL_RenderPoint(renderer, centerX + y, centerY - x);
-				SDL_RenderPoint(renderer, centerX + x, centerY - y);
-
-				if (err <= 0) { y += 1; err += 2 * y + 1; }
-				if (err > 0) { x -= 1; err -= 2 * x + 1; }
-			}
-		}
-
-		// 绘制实心圆
-		inline void Draw_FilledCircle(SDL_Renderer* renderer, float pos_x, float pos_y, float radius)
-		{
-			// 处理圆形的中心点坐标
-			float centerX = pos_x + radius; float centerY = pos_y + radius;
-
-			for (float y = -radius; y <= radius; y += 1.0f)
-			{
-				float x = sqrtf(radius * radius - y * y);
-				SDL_RenderLine(renderer, centerX - x, centerY + y, centerX + x, centerY + y);
-			}
-		}
-
-		// 摆动函数
-		inline float swing(float min, float max, float strength)
-		{
-			if (max < min) std::swap(min, max);
-			if (strength < 0) strength = -strength;
-
-			float dt = Clock::get_global_time();
-			// 摆动区间 = (max-min)÷2 * sin(dt*k) + (max+min)÷2
-			return (max - min) / 2.0f * std::sin(dt * strength) + (max + min) / 2.0f;
-		}
-	};
-
-// =========================================================================================
-// 				基 础 元 素							 base	Elements
-// =========================================================================================
 
 	// 2D摄像机
 	class Camera2D
@@ -698,30 +705,27 @@ namespace fce
 		}
 
 		// 绘制矩形
-		void render_shape(const Point& world_pos, const Size& size, SDL_Color color, bool is_filled) const
+		void render_shape(const Point& center_pos, const Size& size, SDL_Color color, bool is_filled) const
 		{
 			SDL_SetRenderDrawColor(Main_Renderer, color.r, color.g, color.b, color.a);
-
-			// 创建屏幕中的渲染矩形
-			Point screen_pos = this->world_to_screen(world_pos);
-			SDL_FRect rect_dst_win = { screen_pos.x, screen_pos.y, size.width * zoom, size.height * zoom };
+			Point screen_pos = this->world_to_screen(center_pos);
 
 			if (is_filled)
-				SDL_RenderFillRect(Main_Renderer, &rect_dst_win);
+				maths::Draw_FilledRect(screen_pos.x, screen_pos.y, size.w * zoom, size.h * zoom);
 			else
-				SDL_RenderRect(Main_Renderer, &rect_dst_win);
+				maths::Draw_Rect(screen_pos.x, screen_pos.y, size.w * zoom, size.h * zoom);
 		}
 
-		// 绘制圆形
-		void render_shape(const Point& world_pos, float radius, SDL_Color color, bool is_filled) const
+		// 绘制标准圆形
+		void render_shape(const Point& center_pos, float radius, SDL_Color color, bool is_filled) const
 		{
 			SDL_SetRenderDrawColor(Main_Renderer, color.r, color.g, color.b, color.a);
-			Point screen_pos = this->world_to_screen(world_pos);
+			Point screen_pos = this->world_to_screen(center_pos);
 
 			if (is_filled)
-				maths::Draw_FilledCircle(Main_Renderer, screen_pos.x, screen_pos.y, radius * zoom);
+				maths::Draw_FilledCircle(screen_pos.x, screen_pos.y, radius * zoom);
 			else
-				maths::Draw_Circle(Main_Renderer, screen_pos.x, screen_pos.y, radius * zoom);
+				maths::Draw_Circle(screen_pos.x, screen_pos.y, radius * zoom);
 		}
 
 		// 渲染文字
@@ -1003,6 +1007,7 @@ namespace fce
 		// 获取速度
 		const Vector2& get_velocity() const { return this->velocity; }
 
+		// 设置速度
 		void set_velocity(const Vector2& velocity) { this->velocity = velocity; }
 
 		// 获取方向
@@ -1148,7 +1153,7 @@ namespace fce
 		void on_render(const Camera2D& camera) override
 		{
 			if (!current_texture) return;	// 如果没有设置纹理则不渲染
-			SDL_FRect rect_dst_win = { world_position.x, world_position.y, size.width, size.height };
+			SDL_FRect rect_dst_win = { world_position.x, world_position.y, size.w, size.h };
 			camera.render_texture(current_texture, nullptr, &rect_dst_win, 0, nullptr, false);
 		}
 
@@ -1156,8 +1161,8 @@ namespace fce
 		void on_input(const SDL_Event& event) override
 		{
 			// 判断鼠标是否在按钮上悬停
-			bool in_range_x = event.motion.x >= world_position.x && event.motion.x <= world_position.x + size.width;
-			bool in_range_y = event.motion.y >= world_position.y && event.motion.y <= world_position.y + size.height;
+			bool in_range_x = event.motion.x >= world_position.x && event.motion.x <= world_position.x + size.w;
+			bool in_range_y = event.motion.y >= world_position.y && event.motion.y <= world_position.y + size.h;
 
 			if (event.type == SDL_EVENT_MOUSE_MOTION)	// 鼠标悬停在按钮上
 			{
@@ -1454,7 +1459,7 @@ namespace fce
 		}
 
 		// 加载资源
-		inline void load_resources(SDL_Renderer* renderer, const char* directory)
+		inline void load_resources(const char* directory)
 		{
 			// 判断文件是否存在
 			if (!std::filesystem::exists(directory))
@@ -1471,7 +1476,7 @@ namespace fce
 					const std::filesystem::path& path = entry.path();
 					if (path.extension() == ".bmp" || path.extension() == ".png" || path.extension() == ".jpg")
 					{
-						SDL_Texture* texture = IMG_LoadTexture(renderer, path.u8string().c_str());
+						SDL_Texture* texture = IMG_LoadTexture(Main_Renderer, path.u8string().c_str());
 						texture_pool[path.stem().u8string()] = texture;
 					}
 					if (path.extension() == ".wav")
@@ -1718,14 +1723,14 @@ namespace fce
 						continue;
 
 					// 横向碰撞条件：两碰撞箱的maxX - 两碰撞箱的minX <= 两碰撞箱的宽度之和
-					float max_x = std::max(collision_box_src->world_position.x + collision_box_src->size.width / 2.0f, collision_box_dst->world_position.x + collision_box_dst->size.width / 2.0f);
-					float min_x = std::min(collision_box_src->world_position.x - collision_box_src->size.width / 2.0f, collision_box_dst->world_position.x - collision_box_dst->size.width / 2.0f);
-					bool is_collide_x = (max_x - min_x <= collision_box_src->size.width + collision_box_dst->size.width);
+					float max_x = std::max(collision_box_src->world_position.x + collision_box_src->size.w / 2.0f, collision_box_dst->world_position.x + collision_box_dst->size.w / 2.0f);
+					float min_x = std::min(collision_box_src->world_position.x - collision_box_src->size.w / 2.0f, collision_box_dst->world_position.x - collision_box_dst->size.w / 2.0f);
+					bool is_collide_x = (max_x - min_x <= collision_box_src->size.w + collision_box_dst->size.w);
 
 					// 纵向碰撞条件：两碰撞箱的maxY - 两碰撞箱的minY <= 两碰撞箱的高度之和
-					float max_y = std::max(collision_box_src->world_position.y + collision_box_src->size.height / 2.0f, collision_box_dst->world_position.y + collision_box_dst->size.height / 2.0f);
-					float min_y = std::min(collision_box_src->world_position.y - collision_box_src->size.height / 2.0f, collision_box_dst->world_position.y - collision_box_dst->size.height / 2.0f);
-					bool is_collide_y = (max_y - min_y <= collision_box_src->size.height + collision_box_dst->size.height);
+					float max_y = std::max(collision_box_src->world_position.y + collision_box_src->size.h / 2.0f, collision_box_dst->world_position.y + collision_box_dst->size.h / 2.0f);
+					float min_y = std::min(collision_box_src->world_position.y - collision_box_src->size.h / 2.0f, collision_box_dst->world_position.y - collision_box_dst->size.h / 2.0f);
+					bool is_collide_y = (max_y - min_y <= collision_box_src->size.h + collision_box_dst->size.h);
 
 					// 如果横向/纵向都成立，且目标碰撞箱存在回调函数，则执行回调函数
 					if (is_collide_x && is_collide_y && collision_box_dst->on_collide)
@@ -1739,10 +1744,6 @@ namespace fce
 		{
 			for (auto collision_box : collision_box_list)
 			{
-				// 定义碰撞箱渲染矩形属性
-				Point rect_pos = { collision_box->world_position.x - collision_box->size.width / 2.0f, collision_box->world_position.y - collision_box->size.height / 2.0f, };
-				Size rect_size = { collision_box->size.width, collision_box->size.height };
-
 				// 定义碰撞箱渲染颜色
 				SDL_Color color;
 				if (collision_box->enabled)
@@ -1750,7 +1751,7 @@ namespace fce
 				else
 					color = { 115,155,175,255 };
 
-				camera.render_shape(rect_pos, rect_size, color, false);	// 绘制碰撞箱
+				camera.render_shape(collision_box->world_position, collision_box->size, color, false);	// 绘制碰撞箱
 			}
 		}
 
