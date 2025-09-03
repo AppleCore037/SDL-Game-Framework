@@ -679,10 +679,16 @@ namespace fce
 
 		// 渲染纹理
 		void render_texture(SDL_Texture* texture, const SDL_FRect* rect_src, const SDL_FRect* rect_dst,
-			double angle, const SDL_FPoint* center, bool is_flip = false) const
+			double angle, const SDL_FPoint center_anchor = { 0.0f, 0.0f }, bool is_flip = false) const
 		{
-			// 渲染坐标 = 屏幕中心点 + (角色世界坐标 - 摄像机坐标) * 缩放因子
 			SDL_FRect rect_dst_win = *rect_dst;
+
+			// 设置渲染与旋转中心点
+			SDL_FPoint rotate_center = { rect_dst->w * center_anchor.x * zoom, rect_dst->h * center_anchor.y * zoom };
+			rect_dst_win.x = rect_dst_win.x - rect_dst->w * center_anchor.x;
+			rect_dst_win.y = rect_dst_win.y - rect_dst->h * center_anchor.y;
+
+			// 渲染坐标 = 屏幕中心点 + (角色世界坐标 - 摄像机坐标) * 缩放因子
 			rect_dst_win.x = this->get_screen_center().x + (rect_dst_win.x - world_position.x) * zoom;
 			rect_dst_win.y = this->get_screen_center().y + (rect_dst_win.y - world_position.y) * zoom;
 
@@ -690,7 +696,7 @@ namespace fce
 			rect_dst_win.w = rect_dst->w * zoom;
 			rect_dst_win.h = rect_dst->h * zoom;
 
-			SDL_RenderTextureRotated(Main_Renderer, texture, rect_src, &rect_dst_win, angle, center,
+			SDL_RenderTextureRotated(Main_Renderer, texture, rect_src, &rect_dst_win, angle, &rotate_center,
 				is_flip ? SDL_FLIP_HORIZONTAL : SDL_FLIP_NONE);
 		}
 
@@ -874,14 +880,7 @@ namespace fce
 		void on_update(float delta) { timer.on_update(delta); }
 
 		// 设置动画中心点（默认为纹理左上角，参数范围在0.0~1.0）
-		void set_center(float anchor_x, float anchor_y)
-		{
-			if (anchor_x > 1.0f) anchor_x = 1.0f;
-			if (anchor_y > 1.0f) anchor_y = 1.0f;
-
-			const Frame& frame = frame_list[0];
-			this->center = { frame.rect_src.w * anchor_x, frame.rect_src.h * anchor_y };
-		}
+		void set_center(float anchor_x, float anchor_y) { this->center = { anchor_x, anchor_y }; }
 
 		// 添加序列帧
 		void add_frame(Atlas* atlas)
@@ -921,13 +920,10 @@ namespace fce
 			const Frame& frame = frame_list[idx_frame];
 			const Point& pos_camera = camera.get_position();
 
-			SDL_FRect rect_dst{};
-			rect_dst.x = world_position.x - frame.rect_src.w * (center.x / frame.rect_src.w);
-			rect_dst.y = world_position.y - frame.rect_src.h * (center.y / frame.rect_src.h);
-			rect_dst.w = frame.rect_src.w;
-			rect_dst.h = frame.rect_src.h;
+			SDL_FRect rect_dst = { world_position.x, world_position.y,
+				frame.rect_src.w, frame.rect_src.h };
 
-			camera.render_texture(frame.texture, &frame.rect_src, &rect_dst, angle, &center, is_flip);
+			camera.render_texture(frame.texture, &frame.rect_src, &rect_dst, angle, center, is_flip);
 		}
 
 	private:
@@ -1154,7 +1150,7 @@ namespace fce
 		{
 			if (!current_texture) return;	// 如果没有设置纹理则不渲染
 			SDL_FRect rect_dst_win = { world_position.x, world_position.y, size.w, size.h };
-			camera.render_texture(current_texture, nullptr, &rect_dst_win, 0, nullptr, false);
+			camera.render_texture(current_texture, nullptr, &rect_dst_win, 0);
 		}
 
 		// 处理输入事件
