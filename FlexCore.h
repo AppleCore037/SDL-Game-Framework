@@ -3,7 +3,9 @@
 // 标准库
 #include <chrono>
 #include <filesystem>
+#include <fstream>
 #include <functional>
+#include <iostream>
 #include <memory>
 #include <random>
 #include <string>
@@ -119,7 +121,7 @@ namespace fce
 	}
 
 	// 释放框架内置资源 [包含：Main_TextEngine、Main_Renderer、Main_Window]
-	inline void release_resources()
+	inline void Release_Graphic()
 	{
 		if (Main_TextEngine)
 		{
@@ -489,6 +491,230 @@ namespace fce
 		float time_scale;	// 时间缩放
 	};
 	inline Clock Clock::m_instance;
+
+	// 数据读写器
+	class Data
+	{
+		using mode_t = std::ios_base::openmode;
+		using ios_t = std::ios;
+
+	public:
+		// 清空文件
+		static void clear_file(const std::string& file_name)
+		{
+			std::ofstream writer = std::ofstream(file_name + ".kvp", ios_t::binary | ios_t::trunc);
+			if (!writer.is_open())
+			{
+				std::cerr << "Error: Cannot open file “" + file_name + ".kvp”!" << std::endl;
+				return;
+			}
+			writer.close();
+			std::cout << "Log: File “" + file_name + ".kvp” cleared!" << std::endl;
+		}
+
+		// 保存数据
+		template <typename _Ty>
+		static void save_data(const std::string& file_name, const std::string& key, _Ty value)
+		{
+			if constexpr (std::is_same_v<_Ty, int> || std::is_same_v<_Ty, bool>)
+				m_instance.save_int(file_name, key, value);
+			else if constexpr (std::is_same_v<_Ty, float> || std::is_same_v<_Ty, double>)
+				m_instance.save_float(file_name, key, value);
+			else if constexpr (std::is_same_v<_Ty, std::string>)
+				m_instance.save_string(file_name, key, value);
+			else if constexpr (std::is_same_v<_Ty, const char*>)
+				m_instance.save_cStr(file_name, key, value);
+			else
+				static_assert(false, "Error: Unsupported data type!");
+
+			std::cout << "Log: Data saved to file “" + file_name + ".kvp”!" << std::endl;
+		}
+
+		// 读取数据
+		template <typename _Ty>
+		static _Ty read_data(const std::string& file_name, const std::string& key)
+		{
+			if constexpr (std::is_same_v<_Ty, int> || std::is_same_v<_Ty, bool>)
+				return m_instance.read_int(file_name, key);
+			else if constexpr (std::is_same_v<_Ty, float> || std::is_same_v<_Ty, double>)
+				return m_instance.read_float(file_name, key);
+			else if constexpr (std::is_same_v<_Ty, std::string> || std::is_same_v<_Ty, const char*>)
+				return m_instance.read_string(file_name, key);
+			else
+				static_assert(false, "Error: Unsupported data type!");
+		}
+
+	private:
+		Data() = default;
+		~Data() = default;
+
+		// 保存int类型数据
+		void save_int(const std::string& file_name, const std::string& key, int value)
+		{
+			std::ofstream writer = std::ofstream(file_name + ".kvp", ios_t::out | ios_t::app);
+			writer << key << ":" << "int=" << value << std::endl;
+			writer.close();
+		}
+
+		// 保存float类型数据
+		void save_float(const std::string& file_name, const std::string& key, float value)
+		{
+			std::ofstream writer = std::ofstream(file_name + ".kvp", ios_t::out | ios_t::app);
+			writer << key << ":" << "float=" << value << std::endl;
+			writer.close();
+		}
+
+		// 保存string类型数据
+		void save_string(const std::string& file_name, const std::string& key, const std::string& value)
+		{
+			std::ofstream writer = std::ofstream(file_name + ".kvp", ios_t::out | ios_t::app);
+			writer << key << ":" << "string=" << value << std::endl;
+			writer.close();
+		}
+
+		// 保存const char*类型数据
+		void save_cStr(const std::string& file_name, const std::string& key, const char* value)
+		{
+			std::ofstream writer = std::ofstream(file_name + ".kvp", ios_t::out | ios_t::app);
+			writer << key << ":" << "string=" << std::string(value) << std::endl;
+			writer.close();
+		}
+
+		// 读取int类型数据
+		int read_int(const std::string& file_name, const std::string& key)
+		{
+			std::ifstream reader = std::ifstream(file_name + ".kvp", ios_t::in);
+
+			// 检测文件属性是否正确
+			if (!reader.is_open())
+			{
+				std::cerr << "Error: Cannot open file “" + file_name + ".kvp”!" << std::endl;
+				return 0;
+			}
+			else
+			{
+				char first_char; reader >> first_char;
+				if (reader.eof())
+				{
+					std::cerr << "Error: File “" << file_name << "” is empty!" << std::endl;
+					return 0;
+				}
+				reader.putback(first_char);
+			}
+
+			std::string line;
+			while (std::getline(reader, line))
+			{
+				size_t type_pos = line.find(':');	// 找到类型分隔符
+				size_t value_pos = line.find('=');	// 找到值分隔符
+				if (value_pos != std::string::npos && type_pos != std::string::npos)
+				{
+					std::string type = line.substr(type_pos + 1, value_pos - type_pos - 1);	// 提取类型
+					std::string current_key = line.substr(0, type_pos);	// 提取键
+					if (current_key == key && type == "int")	// 找到目标键且类型匹配
+					{
+						auto value = std::stoi(line.substr(value_pos + 1));
+						reader.close(); return value;
+					}
+				}
+			}
+
+			reader.close();
+			std::cerr << "Error: Key “" << key << "” not found in file “" << file_name << "”!" << std::endl;
+			return 0;
+		}
+
+		// 读取float类型数据
+		float read_float(const std::string& file_name, const std::string& key)
+		{
+			std::ifstream reader = std::ifstream(file_name + ".kvp", ios_t::in);
+
+			// 检测文件属性是否正确
+			if (!reader.is_open())
+			{
+				std::cerr << "Error: Cannot open file “" + file_name + ".kvp”!" << std::endl;
+				return 0.0f;
+			}
+			else
+			{
+				char first_char; reader >> first_char;
+				if (reader.eof())
+				{
+					std::cerr << "Error: File “" << file_name << "” is empty!" << std::endl;
+					return 0.0f;
+				}
+				reader.putback(first_char);
+			}
+
+			std::string line;
+			while (std::getline(reader, line))
+			{
+				size_t type_pos = line.find(':');	// 找到类型分隔符
+				size_t value_pos = line.find('=');	// 找到值分隔符
+				if (value_pos != std::string::npos && type_pos != std::string::npos)
+				{
+					std::string type = line.substr(type_pos + 1, value_pos - type_pos - 1);	// 提取类型
+					std::string current_key = line.substr(0, type_pos);	// 提取键
+					if (current_key == key && type == "float")	// 找到目标键且类型匹配
+					{
+						auto value = std::stof(line.substr(value_pos + 1));
+						reader.close(); return value;
+					}
+				}
+			}
+
+			reader.close();
+			std::cerr << "Error: Key “" << key << "” not found in file “" << file_name << "”!" << std::endl;
+			return 0.0f;
+		}
+
+		// 读取string类型数据
+		std::string read_string(const std::string& file_name, const std::string& key)
+		{
+			std::ifstream reader = std::ifstream(file_name + ".kvp", ios_t::in);
+
+			// 检测文件属性是否正确
+			if (!reader.is_open())
+			{
+				std::cerr << "Error: Cannot open file “" + file_name + ".kvp”!" << std::endl;
+				return "";
+			}
+			else
+			{
+				char first_char; reader >> first_char;
+				if (reader.eof())
+				{
+					std::cerr << "Error: File “" << file_name << "” is empty!" << std::endl;
+					return "";
+				}
+				reader.putback(first_char);
+			}
+
+			std::string line;
+			while (std::getline(reader, line))
+			{
+				size_t type_pos = line.find(':');	// 找到类型分隔符
+				size_t value_pos = line.find('=');	// 找到值分隔符
+				if (value_pos != std::string::npos && type_pos != std::string::npos)
+				{
+					std::string type = line.substr(type_pos + 1, value_pos - type_pos - 1);	// 提取类型
+					std::string current_key = line.substr(0, type_pos);	// 提取键
+					if (current_key == key && type == "string")	// 找到目标键且类型匹配
+					{
+						auto value = line.substr(value_pos + 1);
+						reader.close(); return value;
+					}
+				}
+			}
+			reader.close();
+			std::cerr << "Error: Key “" << key << "” not found in file “" << file_name << "”!" << std::endl;
+			return "";
+		}
+
+	private:
+		static Data m_instance;	// 单例实例
+	};
+	inline Data Data::m_instance;
 
 	// 数学运算工具
 	namespace maths
@@ -1186,7 +1412,7 @@ namespace fce
 						Mix_PlayChannel(-1, effects["click"].second, 0);
 
 					this->current_texture = effects["click"].first;
-					this->on_click();
+					if (on_click) this->on_click();
 				}
 			}
 			if (event.type == SDL_EVENT_MOUSE_BUTTON_UP && event.button.button == SDL_BUTTON_LEFT) // 按钮被释放
@@ -1213,30 +1439,64 @@ namespace fce
 		Scene() = default;			 /* 构造函数处初始化实例化对象 */
 		virtual ~Scene() = default;	 /* 析函数出销毁实例化对象 */
 
+		// 注册新精灵
+		void register_sprite(const std::string& name, Sprite* new_sprite) { sprite_pool.emplace(name, new_sprite); }
+
+		// 销毁目标精灵
+		void destroy_sprite(Sprite* sprite)
+		{
+			// 依次遍历直到找到目标精灵
+			for (auto iterator = sprite_pool.begin(); iterator != sprite_pool.end(); iterator++)
+			{
+				// 如果找到了并且存在目标精灵
+				if (iterator->second == sprite && iterator->second)
+				{
+					this->sprite_pool.erase(iterator);
+					delete sprite; return;
+				}
+			}
+		}
+
 		// 获取精灵（返回指定类型模板的对象指针）
 		template <typename _CvtTy = Sprite>
 		_CvtTy* find_sprite(const std::string& name)
 		{
 			auto range = sprite_pool.equal_range(name);
+			auto find_it = sprite_pool.find(name);
 
-			if (sprite_pool.find(name) == sprite_pool.end())	// 检测是否找到
+			if (find_it == sprite_pool.end())	// 检测是否找到
 				throw custom_error(u8"SceneManager Error", u8"Sprite “" + name + u8"” is not found!");
 			else if (std::distance(range.first, range.second) > 1)	// 检测唯一性
 				throw custom_error(u8"SceneManager Error", u8"“" + name + u8"” is unclear, Please check name's singleness");
 
-			return (_CvtTy*)sprite_pool[name];
+			return (_CvtTy*)find_it->second;
 		}
 
-		virtual void on_enter() {};					/* 进入场景（对角色属性的重置）*/
-		virtual void on_update(float delta) {};		/* 更新场景 */
-		virtual void on_render(const Camera2D& camera_game, 
-			const Camera2D& camera_ui) {}; /* 渲染场景（一个负责渲染游戏，一个负责渲染UI）*/
-		virtual void on_input(const SDL_Event& event) {};	/* 输入事件处理 */
-		virtual void on_exit() {};						    /* 退出场景（不要销毁对象）*/
+		// 获取精灵组（返回一个范围迭代器）
+		auto find_group(const std::string& name)
+		{
+			auto range = sprite_pool.equal_range(name);
+			if (range.first == range.second)	// 检测是否找到
+				throw custom_error(u8"SceneManager Error", u8"Sprites group “" + name + u8"” is not found!");
+			return range;
+		}
+
+		virtual void on_enter() {};											  // 进入场景（对角色属性的重置）
+		virtual void on_update(float delta) {};								  // 更新场景
+		virtual void on_render(const Camera2D& game,  const Camera2D& ui) {}; // 渲染场景（一个负责渲染游戏，一个负责渲染UI）
+		virtual void on_input(const SDL_Event& event) {};					  // 输入事件处理
+		virtual void on_exit() {};											  // 退出场景（不要销毁对象）
 
 	protected:
-		// 为精灵池中的角色进行排序，返回std::vector<Sprite*>
-		std::vector<Sprite*> sort_sprite_pool()
+		// 更新所有精灵
+		void sprites_update(float delta)
+		{
+			for (auto& sprite : sprite_pool)
+				sprite.second->on_update(delta);
+		}
+
+		// 渲染所有精灵
+		void sprites_render(const Camera2D& camera)
 		{
 			std::vector<Sprite*> sorted_list;
 			sorted_list.reserve(sprite_pool.size());
@@ -1253,27 +1513,18 @@ namespace fce
 						return a->get_render_layer() < b->get_render_layer();
 				});
 
-			return sorted_list;
+			for (auto& sprite : sorted_list)
+				sprite->on_render(camera);
 		}
 
-		// 注册新精灵
-		void register_sprite(const std::string& name, Sprite* new_sprite) { sprite_pool.emplace(name, new_sprite); }
-
-		// 销毁目标精灵
-		void destroy_sprite(Sprite* sprite)
+		// 处理所有精灵的输入事件
+		void sprites_input(const SDL_Event& event)
 		{
-			// 依次遍历直到找到目标精灵
-			for (auto iterator = sprite_pool.begin(); iterator != sprite_pool.end(); iterator++)
-			{
-				if (iterator->second == sprite)
-				{
-					this->sprite_pool.erase(iterator);
-					delete sprite; return;
-				}
-			}
+			for (auto& sprite : sprite_pool)
+				sprite.second->on_input(event);
 		}
 
-	protected:
+	private:
 		std::unordered_multimap<std::string, Sprite*> sprite_pool;	// 精灵池
 	};
 
