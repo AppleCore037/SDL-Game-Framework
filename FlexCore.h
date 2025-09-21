@@ -1496,7 +1496,7 @@ namespace fce
 		}
 
 		// 渲染所有精灵
-		void sprites_render(const Camera2D& camera)
+		void sprites_render(const Camera2D& game, const Camera2D& ui)
 		{
 			std::vector<Sprite*> sorted_list;
 			sorted_list.reserve(sprite_pool.size());
@@ -1513,8 +1513,14 @@ namespace fce
 						return a->get_render_layer() < b->get_render_layer();
 				});
 
+			// 根据渲染层级进行渲染
 			for (auto& sprite : sorted_list)
-				sprite->on_render(camera);
+			{
+				if(sprite->get_render_layer() == RenderLayer::UI)
+					sprite->on_render(ui);
+				else
+					sprite->on_render(game);
+			}
 		}
 
 		// 处理所有精灵的输入事件
