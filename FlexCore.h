@@ -11,6 +11,7 @@
 #include <string>
 #include <thread>
 #include <unordered_map>
+#include <unordered_set>
 
 // 第三方库（SDL）
 #include <SDL3/SDL.h>
@@ -871,6 +872,7 @@ namespace fce
 					shake_position = Vector2(0, 0);
 				});
 		}
+		Camera2D(const Point& world_pos) : Camera2D() { this->base_position = world_pos; }
 
 		~Camera2D() = default;
 
@@ -1078,6 +1080,8 @@ namespace fce
 					}
 				});
 		}
+		Animation(SDL_Texture* texture, int num_h) : Animation() { this->add_frame(texture, num_h); }
+		Animation(Atlas* atlas) : Animation() { this->add_frame(atlas); }
 
 		~Animation() = default;
 
@@ -1105,7 +1109,7 @@ namespace fce
 		// 更新动画
 		void on_update(float delta) { timer.on_update(delta); }
 
-		// 设置动画中心点（默认为纹理左上角，参数范围在0.0~1.0）
+		// 设置动画中心点（默认为纹理中心点，参数范围在0.0~1.0）
 		void set_center(float anchor_x, float anchor_y) { this->center = { anchor_x, anchor_y }; }
 
 		// 添加序列帧
@@ -1169,7 +1173,7 @@ namespace fce
 	private:
 		Point world_position;				// 世界坐标
 		double angle = 0;					// 角度
-		SDL_FPoint center = { 0 };			// 中心点
+		SDL_FPoint center = { 0.5f, 0.5f };	// 中心点
 		bool is_flip = false;				// 是否反转
 
 		Timer timer;						// 内置计时器
@@ -1244,6 +1248,12 @@ namespace fce
 		// 设置世界坐标
 		void set_position(const Point& world_pos) { this->world_position = world_pos; }
 
+		// 获取精灵大小
+		const Size& get_size() const { return this->world_size; }
+
+		// 设置精灵大小
+		void set_size(const Size& size) { this->world_size = size; }
+
 		// 设置渲染层
 		void set_render_layer(RenderLayer layer) { this->render_layer = layer; }
 
@@ -1281,7 +1291,8 @@ namespace fce
 		virtual void reset_property() {};					// 重置角色属性
 
 	protected:
-		Point world_position;						  // 位置
+		Point world_position;						  // 世界坐标
+		Size world_size = { 0, 0 };					  // 精灵大小
 		Vector2 velocity;							  // 速度
 		float direction = 0.0f;						  // 方向
 		CollisionBox* hit_box = nullptr;			  // 自身碰撞箱
@@ -1436,22 +1447,32 @@ namespace fce
 	class Scene
 	{
 	public:
-		Scene() = default;			 /* 构造函数处初始化实例化对象 */
-		virtual ~Scene() = default;	 /* 析函数出销毁实例化对象 */
+		Scene() = default;									 /* 构造函数处初始化实例化对象 */
+		virtual ~Scene() { this->destroy_all_sprites(); }	 /* 析函数出销毁实例化对象 */
 
 		// 注册新精灵
-		void register_sprite(const std::string& name, Sprite* new_sprite) { sprite_pool.emplace(name, new_sprite); }
+		void register_sprite(const std::string& name, Sprite* new_sprite) 
+		{
+			sprites_pool.emplace(name, new_sprite);		// 加入精灵池
+
+			RenderLayer layer_target = new_sprite->get_render_layer();
+			if (layer_target == RenderLayer::None)
+				throw custom_error(u8"SceneManager Error", u8"sprite “" + name + u8"” render layer no setting!");
+			this->layered_sprite_pool[layer_target].push_back(new_sprite); // 加入分层渲染池
+
+			needs_sorting = true;	// 标记需要排序
+		}
 
 		// 销毁目标精灵
 		void destroy_sprite(Sprite* sprite)
 		{
 			// 依次遍历直到找到目标精灵
-			for (auto iterator = sprite_pool.begin(); iterator != sprite_pool.end(); iterator++)
+			for (auto iterator = sprites_pool.begin(); iterator != sprites_pool.end(); iterator++)
 			{
 				// 如果找到了并且存在目标精灵
 				if (iterator->second == sprite && iterator->second)
 				{
-					this->sprite_pool.erase(iterator);
+					this->sprites_pool.erase(iterator);
 					delete sprite; return;
 				}
 			}
@@ -1461,10 +1482,10 @@ namespace fce
 		template <typename _CvtTy = Sprite>
 		_CvtTy* find_sprite(const std::string& name)
 		{
-			auto range = sprite_pool.equal_range(name);
-			auto find_it = sprite_pool.find(name);
+			auto range = sprites_pool.equal_range(name);
+			auto find_it = sprites_pool.find(name);
 
-			if (find_it == sprite_pool.end())	// 检测是否找到
+			if (find_it == sprites_pool.end())	// 检测是否找到
 				throw custom_error(u8"SceneManager Error", u8"Sprite “" + name + u8"” is not found!");
 			else if (std::distance(range.first, range.second) > 1)	// 检测唯一性
 				throw custom_error(u8"SceneManager Error", u8"“" + name + u8"” is unclear, Please check name's singleness");
@@ -1475,7 +1496,7 @@ namespace fce
 		// 获取精灵组（返回一个范围迭代器）
 		auto find_group(const std::string& name)
 		{
-			auto range = sprite_pool.equal_range(name);
+			auto range = sprites_pool.equal_range(name);
 			if (range.first == range.second)	// 检测是否找到
 				throw custom_error(u8"SceneManager Error", u8"Sprites group “" + name + u8"” is not found!");
 			return range;
@@ -1491,47 +1512,99 @@ namespace fce
 		// 更新所有精灵
 		void sprites_update(float delta)
 		{
-			for (auto& sprite : sprite_pool)
-				sprite.second->on_update(delta);
+			for (auto& [name, sprite] : sprites_pool)
+				sprite->on_update(delta);
+			needs_sorting = true;
 		}
 
 		// 渲染所有精灵
 		void sprites_render(const Camera2D& game, const Camera2D& ui)
 		{
-			std::vector<Sprite*> sorted_list;
-			sorted_list.reserve(sprite_pool.size());
-
-			for (auto& sprite : sprite_pool)
-				sorted_list.push_back(sprite.second);
-
-			//先按渲染层级，再按坐标进行排序
-			std::sort(sorted_list.begin(), sorted_list.end(), [](const Sprite* a, const Sprite* b)
-				{
-					if (a->get_render_layer() == b->get_render_layer())
-						return a->get_position().y < b->get_position().y;
-					else
-						return a->get_render_layer() < b->get_render_layer();
-				});
-
-			// 根据渲染层级进行渲染
-			for (auto& sprite : sorted_list)
+			// 如果需要排序则进行排序
+			if (needs_sorting && is_enabled_y_sort)
 			{
-				if(sprite->get_render_layer() == RenderLayer::UI)
-					sprite->on_render(ui);
-				else
-					sprite->on_render(game);
+				for (auto& [layer, sprites] : this->layered_sprite_pool)
+				{
+					if (this->layer_need_y_sort(layer))
+					{
+						// 按Y轴从小到大排序
+						std::sort(sprites.begin(), sprites.end(),
+							[](const Sprite* a, const Sprite* b) { return a->get_position().y < b->get_position().y; });
+					}
+				}
 			}
+			needs_sorting = false;
+
+			// 按渲染层顺序渲染
+			this->render_layer(RenderLayer::Background, game, ui);
+			this->render_layer(RenderLayer::Frontground, game, ui);
+			this->render_layer(RenderLayer::Label, game, ui);
+			this->render_layer(RenderLayer::GameObject, game, ui);
+			this->render_layer(RenderLayer::Effect, game, ui);
+			this->render_layer(RenderLayer::UI, game, ui);
 		}
 
 		// 处理所有精灵的输入事件
 		void sprites_input(const SDL_Event& event)
 		{
-			for (auto& sprite : sprite_pool)
-				sprite.second->on_input(event);
+			for (auto& [name, sprite] : sprites_pool)
+				sprite->on_input(event);
+		}
+
+		// 销毁所有精灵
+		void destroy_all_sprites()
+		{
+			// 为空则直接返回
+			if (sprites_pool.empty()) return;
+
+			// 释放精灵资源
+			for (auto& [name, sprite] : sprites_pool)
+				delete sprite;
+
+			sprites_pool.clear();
+			layered_sprite_pool.clear();
+		}
+
+		// 设置是否启用Y轴排序(默认是true)
+		void set_enable_y_sort(bool flag) { this->is_enabled_y_sort = flag; }
+
+	private:
+		// 渲染指定渲染层的所有精灵
+		void render_layer(RenderLayer layer, const Camera2D& game, const Camera2D& ui)
+		{
+			// 如果该渲染层不存在则直接返回
+			if (layered_sprite_pool.find(layer) == layered_sprite_pool.end())
+				return;
+
+			// 选择使用的摄像机
+			const Camera2D& used_camera = (layer == RenderLayer::UI) ? ui : game;
+			for (Sprite* sprite : layered_sprite_pool[layer])
+			{
+				int screen_w, screen_h;
+				SDL_GetWindowSize(Main_Window, &screen_w, &screen_h);	// 获取窗口宽高
+				bool is_out_of_view_x = (used_camera.world_to_screen(sprite->get_position()).x < -sprite->get_size().w || used_camera.world_to_screen(sprite->get_position()).x > screen_w + sprite->get_size().w);
+				bool is_out_of_view_y = (used_camera.world_to_screen(sprite->get_position()).y < -sprite->get_size().h || used_camera.world_to_screen(sprite->get_position()).y > screen_h + sprite->get_size().h);
+				
+				// 如果精灵在摄像机外则跳过渲染
+				if (is_out_of_view_x || is_out_of_view_y) 
+					continue;
+
+				sprite->on_render(used_camera);
+			}
+		}
+
+		// 判断某个渲染层是否需要按Y轴排序
+		bool layer_need_y_sort(RenderLayer layer) const
+		{
+			return (layer == RenderLayer::GameObject || layer == RenderLayer::Label
+				|| layer == RenderLayer::UI);
 		}
 
 	private:
-		std::unordered_multimap<std::string, Sprite*> sprite_pool;	// 精灵池
+		std::unordered_multimap<std::string, Sprite*> sprites_pool;					// 精灵池（支持重名）
+		std::unordered_map<RenderLayer, std::vector<Sprite*>> layered_sprite_pool;	// 分层渲染池
+		bool needs_sorting = false;													// 是否需要排序
+		bool is_enabled_y_sort = true;												// 是否启用Y轴排序
 	};
 
 // ===========================================================================================
