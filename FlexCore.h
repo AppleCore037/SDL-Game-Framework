@@ -11,7 +11,6 @@
 #include <string>
 #include <thread>
 #include <unordered_map>
-#include <unordered_set>
 
 // 第三方库（SDL）
 #include <SDL3/SDL.h>
@@ -32,14 +31,18 @@ namespace fce
 	inline SDL_Window* Main_Window = nullptr;				// 主窗口
 	inline SDL_Renderer* Main_Renderer = nullptr;			// 主渲染器
 	inline TTF_TextEngine* Main_TextEngine = nullptr;		// 主文字引擎
+	inline SDL_Event Main_Event;							// 主循环事件
 
-	constexpr SDL_Color Color_Red = { 255, 0, 0, 255 };			// 红
-	constexpr SDL_Color Color_Blue = { 0, 0, 255, 255 };		// 蓝
-	constexpr SDL_Color Color_Green = { 0, 255, 0, 255 };		// 绿
-	constexpr SDL_Color Color_White = { 255, 255, 255, 255 };	// 白
-	constexpr SDL_Color Color_Black = { 0, 0, 0, 255 };			// 黑
-	constexpr SDL_Color Color_Gray = { 128, 128, 128, 255 };	// 灰
-	constexpr SDL_Color Color_Yellow = { 255, 255, 0, 255 };	// 黄
+	constexpr SDL_Color Color_Red = { 255, 0, 0, 255 };			  // 正红
+	constexpr SDL_Color Color_Blue = { 0, 0, 255, 255 };		  // 正蓝
+	constexpr SDL_Color Color_Green = { 0, 255, 0, 255 };		  // 正绿
+	constexpr SDL_Color Color_White = { 255, 255, 255, 255 };	  // 正白
+	constexpr SDL_Color Color_Black = { 0, 0, 0, 255 };			  // 正黑
+	constexpr SDL_Color Color_Yellow = { 255, 255, 0, 255 };	  // 正黄
+	constexpr SDL_Color Color_Pink = { 255, 0, 255, 255 };		  // 正粉
+	constexpr SDL_Color Color_LightBlue = { 0, 255, 255, 255 };	  // 浅蓝
+	constexpr SDL_Color Color_LightGray = { 128, 128, 128, 255 }; // 浅灰
+	constexpr SDL_Color Color_DarkGray = { 50, 50, 50, 255 };	  // 暗灰
 
 // ==============================================================================================
 //				基 础 枚 举 类 型						Base Enum Types
@@ -121,9 +124,10 @@ namespace fce
 			throw std::runtime_error(u8"Failed to create Main_TextEngine!");
 	}
 
-	// 释放框架内置资源 [包含：Main_TextEngine、Main_Renderer、Main_Window]
+	// 释放框架内置资源
 	inline void Release_Graphic()
 	{
+		// 释放内置资源
 		if (Main_TextEngine)
 		{
 			TTF_DestroyRendererTextEngine(Main_TextEngine);
@@ -139,6 +143,11 @@ namespace fce
 			SDL_DestroyWindow(Main_Window);
 			Main_Window = nullptr;
 		}
+
+		// 退出SDL第三方库
+		TTF_Quit();
+		Mix_Quit();
+		SDL_Quit();
 	}
 
 	// 获取键盘/鼠标事件的UTF-8格式字符串
@@ -422,7 +431,7 @@ namespace fce
 		}
 
 		// 设置FPS
-	 	static void setFPS(int fps_limit)
+	 	static void set_fps(int fps_limit)
 		{
 			m_instance.target_fps = fps_limit;		// 设置目标FPS
 			m_instance.target_time = 1000 / fps_limit;
@@ -440,7 +449,7 @@ namespace fce
 		static void restart_global_time() { m_instance.global_start_time = clock_t::now(); }
 
 		// 获取FPS
-		static int getFPS() { return (int)(1000 / m_instance.delta_time); }
+		static int get_fps() { return (int)(1000 / m_instance.delta_time); }
 
 		// 获取帧间隔
 		static float get_DeltaTime() { return (m_instance.delta_time / 1000.0f) * m_instance.time_scale; }
@@ -747,50 +756,6 @@ namespace fce
 			// 摆动区间 = (max-min)÷2 * sin(dt*k) + (max+min)÷2
 			return (max - min) / 2.0f * std::sin(dt * strength) + (max + min) / 2.0f;
 		}
-
-		// 绘制空心圆
-		inline void Draw_Circle(float center_x, float center_y, float radius)
-		{
-			float x = radius; float y = 0; float err = 0;
-			while (x >= y)
-			{
-				SDL_RenderPoint(Main_Renderer, center_x + x, center_y + y);
-				SDL_RenderPoint(Main_Renderer, center_x + y, center_y + x);
-				SDL_RenderPoint(Main_Renderer, center_x - y, center_y + x);
-				SDL_RenderPoint(Main_Renderer, center_x - x, center_y + y);
-				SDL_RenderPoint(Main_Renderer, center_x - x, center_y - y);
-				SDL_RenderPoint(Main_Renderer, center_x - y, center_y - x);
-				SDL_RenderPoint(Main_Renderer, center_x + y, center_y - x);
-				SDL_RenderPoint(Main_Renderer, center_x + x, center_y - y);
-
-				if (err <= 0) { y += 1; err += 2 * y + 1; }
-				if (err > 0) { x -= 1; err -= 2 * x + 1; }
-			}
-		}
-
-		// 绘制实心圆
-		inline void Draw_FilledCircle(float center_x, float center_y, float radius)
-		{
-			for (float y = -radius; y <= radius; y += 1.0f)
-			{
-				float x = sqrtf(radius * radius - y * y);
-				SDL_RenderLine(Main_Renderer, center_x - x, center_y + y, center_x + x, center_y + y);
-			}
-		}
-
-		// 绘制空心矩形
-		inline void Draw_Rect(float center_x, float center_y, float w, float h)
-		{
-			SDL_FRect rect = { center_x - w / 2.0f, center_y - h / 2.0f, w, h };
-			SDL_RenderRect(Main_Renderer, &rect);
-		}
-
-		// 绘制实心矩形
-		inline void Draw_FilledRect(float center_x, float center_y, float w, float h)
-		{
-			SDL_FRect rect = { center_x - w / 2.0f, center_y - h / 2.0f, w, h };
-			SDL_RenderFillRect(Main_Renderer, &rect);
-		}
 	};
 
 // =========================================================================================
@@ -872,15 +837,15 @@ namespace fce
 					shake_position = Vector2(0, 0);
 				});
 		}
-		Camera2D(const Point& world_pos) : Camera2D() { this->base_position = world_pos; }
+		Camera2D(const Point& pos) : Camera2D() { this->base_position = pos; }
 
 		~Camera2D() = default;
 
 		// 获取摄像机世界坐标(中心点)
-		const Point& get_position() const { return world_position; }
+		const Point& get_position() const { return position; }
 
 		// 设置摄像机世界坐标(中心点)
-		void set_position(const Point& world_pos) { this->base_position = world_pos; }
+		void set_position(const Point& pos) { this->base_position = pos; }
 
 		// 设置摄像机缩放
 		void set_zoom(float scale) { this->zoom = scale; }
@@ -891,7 +856,7 @@ namespace fce
 		// 重置摄像机
 		void reset()
 		{
-			world_position = base_position = shake_position = Point(0, 0);
+			position = base_position = shake_position = Point(0, 0);
 			this->zoom = 1.0f;		// 重置缩放为1.0
 		}
 
@@ -917,8 +882,8 @@ namespace fce
 			rect_dst_win.y = rect_dst_win.y - rect_dst->h * center_anchor.y;
 
 			// 渲染坐标 = 屏幕中心点 + (角色世界坐标 - 摄像机坐标) * 缩放因子
-			rect_dst_win.x = this->get_screen_center().x + (rect_dst_win.x - world_position.x) * zoom;
-			rect_dst_win.y = this->get_screen_center().y + (rect_dst_win.y - world_position.y) * zoom;
+			rect_dst_win.x = this->get_screen_center().x + (rect_dst_win.x - position.x) * zoom;
+			rect_dst_win.y = this->get_screen_center().y + (rect_dst_win.y - position.y) * zoom;
 
 			// 渲染大小 = 纹理大小 * 缩放因子
 			rect_dst_win.w = rect_dst->w * zoom;
@@ -928,48 +893,14 @@ namespace fce
 				is_flip ? SDL_FLIP_HORIZONTAL : SDL_FLIP_NONE);
 		}
 
-		// 绘制线段
-		void render_shape(const Point& start, const Point& end, SDL_Color color) const
-		{
-			SDL_SetRenderDrawColor(Main_Renderer, color.r, color.g, color.b, color.a);
-
-			Point start_win = this->world_to_screen(start);
-			Point end_win = this->world_to_screen(end);
-			SDL_RenderLine(Main_Renderer, start_win.x, start_win.y, end_win.x, end_win.y);
-		}
-
-		// 绘制矩形
-		void render_shape(const Point& center_pos, const Size& size, SDL_Color color, bool is_filled) const
-		{
-			SDL_SetRenderDrawColor(Main_Renderer, color.r, color.g, color.b, color.a);
-			Point screen_pos = this->world_to_screen(center_pos);
-
-			if (is_filled)
-				maths::Draw_FilledRect(screen_pos.x, screen_pos.y, size.w * zoom, size.h * zoom);
-			else
-				maths::Draw_Rect(screen_pos.x, screen_pos.y, size.w * zoom, size.h * zoom);
-		}
-
-		// 绘制标准圆形
-		void render_shape(const Point& center_pos, float radius, SDL_Color color, bool is_filled) const
-		{
-			SDL_SetRenderDrawColor(Main_Renderer, color.r, color.g, color.b, color.a);
-			Point screen_pos = this->world_to_screen(center_pos);
-
-			if (is_filled)
-				maths::Draw_FilledCircle(screen_pos.x, screen_pos.y, radius * zoom);
-			else
-				maths::Draw_Circle(screen_pos.x, screen_pos.y, radius * zoom);
-		}
-
 		// 渲染文字
-		void render_text(const Point& world_pos, TTF_Font* font, SDL_Color color,
+		void render_text(const Point& pos, TTF_Font* font, SDL_Color color,
 			float ptsize, const std::string& info) const
 		{
 			TTF_Text* text_win = TTF_CreateText(Main_TextEngine, font, info.c_str(), NULL);
 			TTF_SetTextColor(text_win, color.r, color.g, color.b, color.a);
 
-			Point screen_pos = this->world_to_screen(world_pos);
+			Point screen_pos = this->world_to_screen(pos);
 			TTF_SetFontSize(font, ptsize * zoom);
 
 			TTF_DrawRendererText(text_win, screen_pos.x, screen_pos.y);
@@ -1007,8 +938,8 @@ namespace fce
 		Point screen_to_world(const Point& screen_pos) const
 		{
 			// 世界坐标 = (窗口坐标 - 屏幕中心点) / 缩放因子 + 摄像机坐标
-			float world_x = (screen_pos.x - this->get_screen_center().x) / zoom + world_position.x;
-			float world_y = (screen_pos.y - this->get_screen_center().y) / zoom + world_position.y;
+			float world_x = (screen_pos.x - this->get_screen_center().x) / zoom + position.x;
+			float world_y = (screen_pos.y - this->get_screen_center().y) / zoom + position.y;
 			return Point(world_x, world_y);
 		}
 
@@ -1016,8 +947,8 @@ namespace fce
 		Point world_to_screen(const Point& world_pos) const
 		{
 			// 渲染坐标 = 屏幕中心点 + (世界坐标 - 摄像机坐标) * 缩放因子
-			float screen_x = this->get_screen_center().x + (world_pos.x - world_position.x) * zoom;
-			float screen_y = this->get_screen_center().y + (world_pos.y - world_position.y) * zoom;
+			float screen_x = this->get_screen_center().x + (world_pos.x - position.x) * zoom;
+			float screen_y = this->get_screen_center().y + (world_pos.y - position.y) * zoom;
 			return Point(screen_x, screen_y);
 		}
 
@@ -1034,7 +965,7 @@ namespace fce
 			}
 
 			// 最终位置 = 基础位置 + 抖动位置
-			world_position = base_position + shake_position;
+			position = base_position + shake_position;
 		}
 
 	private:
@@ -1048,9 +979,9 @@ namespace fce
 		}
 
 	private:
-		Point world_position;				// 摄像机最终世界坐标
-		Point shake_position;				// 抖动位置
-		Point base_position;				// 基础位置
+		Point position;				// 摄像机最终世界坐标
+		Point shake_position;		// 抖动位置
+		Point base_position;		// 基础位置
 
 		Timer timer_shake;					// 抖动计时器
 		bool is_shaking = false;			// 是否抖动
@@ -1059,6 +990,138 @@ namespace fce
 		float zoom = 1.0f;					// 摄像机缩放
 
 		const float SMOOTH_FACTOR = 1.5f;	// 平滑系数常量
+	};
+
+	// 图形渲染器
+	class ShapeMaker
+	{
+	public:
+		// 用指定颜色填充屏幕
+		static void fill(SDL_Color color)
+		{
+			SDL_SetRenderDrawColor(Main_Renderer, color.r, color.g, color.b, color.a);
+			SDL_RenderClear(Main_Renderer);
+		}
+
+		// 绘制线条
+		static void render_line(const Camera2D& camera, const Point& begin, const Point& end, SDL_Color color)
+		{
+			Point begin_win = camera.world_to_screen(begin);
+			Point end_win = camera.world_to_screen(end);
+
+			SDL_SetRenderDrawColor(Main_Renderer, color.r, color.g, color.b, color.a);
+			SDL_RenderLine(Main_Renderer, begin_win.x, begin_win.y, end_win.x, end_win.y);
+		}
+
+		// 绘制锚点为左上角的矩形
+		static void render_TopLeftRect(const Camera2D& camera, const Point& pos, const Size& size, SDL_Color color, bool is_filled = false)
+		{
+			// 设置属性
+			Point pos_win = camera.world_to_screen(pos);
+			Size size_win = { size.w * camera.get_zoom(), size.h * camera.get_zoom() };
+			SDL_FRect rect = { pos_win.x, pos_win.y, size_win.w, size_win.h };
+
+			// 绘制
+			SDL_SetRenderDrawColor(Main_Renderer, color.r, color.g, color.b, color.a);
+			if (is_filled)
+				SDL_RenderFillRect(Main_Renderer, &rect);
+			else
+				SDL_RenderRect(Main_Renderer, &rect);
+		}
+
+		// 绘制锚点为中心的矩形
+		static void render_CenterRect(const Camera2D& camera, const Point& pos, const Size& size, SDL_Color color, bool is_filled = false)
+		{
+			// 设置属性
+			Point pos_win = camera.world_to_screen(pos);
+			Size size_win = { size.w * camera.get_zoom(), size.h * camera.get_zoom() };
+			SDL_FRect rect = { pos_win.x - (size_win.w / 2.0f), pos_win.y - (size_win.h / 2.0f), size_win.w, size_win.h };
+
+			// 绘制
+			SDL_SetRenderDrawColor(Main_Renderer, color.r, color.g, color.b, color.a);
+			if (is_filled)
+				SDL_RenderFillRect(Main_Renderer, &rect);
+			else
+				SDL_RenderRect(Main_Renderer, &rect);
+		}
+
+		// 绘制锚点为左上角的圆形
+		static void render_TopLeftCircle(const Camera2D& camera, const Point& pos, float radius, SDL_Color color, bool is_filled = false)
+		{
+			Point pos_win = camera.world_to_screen(pos);
+			float radius_win = radius * camera.get_zoom();
+			pos_win.x = pos_win.x + radius_win;
+			pos_win.y = pos_win.y + radius_win;
+
+			SDL_SetRenderDrawColor(Main_Renderer, color.r, color.g, color.b, color.a);
+
+			if (is_filled)
+			{
+				for (float y = -radius_win; y <= radius_win; y += 1.0f)
+				{
+					float x = sqrtf(radius_win * radius_win - y * y);
+					SDL_RenderLine(Main_Renderer, pos_win.x - x, pos_win.y + y, pos_win.x + x, pos_win.y + y);
+				}
+			}
+			else
+			{
+				float x = radius_win; float y = 0; float err = 0;
+				while (x >= y)
+				{
+					SDL_RenderPoint(Main_Renderer, pos_win.x + x, pos_win.y + y);
+					SDL_RenderPoint(Main_Renderer, pos_win.x + y, pos_win.y + x);
+					SDL_RenderPoint(Main_Renderer, pos_win.x - y, pos_win.y + x);
+					SDL_RenderPoint(Main_Renderer, pos_win.x - x, pos_win.y + y);
+					SDL_RenderPoint(Main_Renderer, pos_win.x - x, pos_win.y - y);
+					SDL_RenderPoint(Main_Renderer, pos_win.x - y, pos_win.y - x);
+					SDL_RenderPoint(Main_Renderer, pos_win.x + y, pos_win.y - x);
+					SDL_RenderPoint(Main_Renderer, pos_win.x + x, pos_win.y - y);
+
+					if (err <= 0) { y += 1; err += 2 * y + 1; }
+					if (err > 0) { x -= 1; err -= 2 * x + 1; }
+				}
+			}
+		}
+
+		// 绘制锚点为中心的圆形
+		static void render_CenterCircle(const Camera2D& camera, const Point& pos, float radius, SDL_Color color, bool is_filled = false)
+		{
+			Point pos_win = camera.world_to_screen(pos);
+			float radius_win = radius * camera.get_zoom();
+
+			SDL_SetRenderDrawColor(Main_Renderer, color.r, color.g, color.b, color.a);
+
+			if (is_filled)
+			{
+				for (float y = -radius_win; y <= radius_win; y += 1.0f)
+				{
+					float x = sqrtf(radius_win * radius_win - y * y);
+					SDL_RenderLine(Main_Renderer, pos_win.x - x, pos_win.y + y, pos_win.x + x, pos_win.y + y);
+				}
+			}
+			else
+			{
+				float x = radius_win; float y = 0; float err = 0;
+				while (x >= y)
+				{
+					SDL_RenderPoint(Main_Renderer, pos_win.x + x, pos_win.y + y);
+					SDL_RenderPoint(Main_Renderer, pos_win.x + y, pos_win.y + x);
+					SDL_RenderPoint(Main_Renderer, pos_win.x - y, pos_win.y + x);
+					SDL_RenderPoint(Main_Renderer, pos_win.x - x, pos_win.y + y);
+					SDL_RenderPoint(Main_Renderer, pos_win.x - x, pos_win.y - y);
+					SDL_RenderPoint(Main_Renderer, pos_win.x - y, pos_win.y - x);
+					SDL_RenderPoint(Main_Renderer, pos_win.x + y, pos_win.y - x);
+					SDL_RenderPoint(Main_Renderer, pos_win.x + x, pos_win.y - y);
+
+					if (err <= 0) { y += 1; err += 2 * y + 1; }
+					if (err > 0) { x -= 1; err -= 2 * x + 1; }
+				}
+			}
+		}
+
+	private:
+		ShapeMaker() = default;
+		~ShapeMaker() = default;
 	};
 
 	// 序列帧动画
@@ -1089,7 +1152,7 @@ namespace fce
 		void reset() { timer.restart(); idx_frame = 0; }
 
 		// 设置动画世界坐标
-		void set_position(const Point& world_pos) { this->world_position = world_pos; }
+		void set_position(const Point& pos) { this->position = pos; }
 
 		// 设置动画方向
 		void set_rotation(float angle) { this->angle = static_cast<double>(angle); }
@@ -1150,9 +1213,7 @@ namespace fce
 			const Frame& frame = frame_list[idx_frame];
 			const Point& pos_camera = camera.get_position();
 
-			SDL_FRect rect_dst = { world_position.x, world_position.y,
-				frame.rect_src.w, frame.rect_src.h };
-
+			SDL_FRect rect_dst = { position.x, position.y, frame.rect_src.w, frame.rect_src.h };
 			camera.render_texture(frame.texture, &frame.rect_src, &rect_dst, angle, center, is_flip);
 		}
 
@@ -1171,7 +1232,7 @@ namespace fce
 		};
 
 	private:
-		Point world_position;				// 世界坐标
+		Point position;						// 世界坐标
 		double angle = 0;					// 角度
 		SDL_FPoint center = { 0.5f, 0.5f };	// 中心点
 		bool is_flip = false;				// 是否反转
@@ -1208,11 +1269,11 @@ namespace fce
 		const Size& get_size() const { return this->size; }
 
 		// 设置碰撞箱世界位置
-		void set_position(const Point& world_pos) { this->world_position = world_pos; }
+		void set_position(const Point& pos) { this->position = pos; }
 
 	private:
 		Size size = { 0, 0 };								// 碰撞箱大小
-		Point world_position;								// 碰撞箱世界坐标
+		Point position;										// 碰撞箱世界坐标
 		bool enabled = true;								// 是否启用碰撞检测
 		std::function<void(CollisionLayer)> on_collide;		// 碰撞回调函数
 		CollisionLayer layer_src = CollisionLayer::None;	// 自身碰撞层
@@ -1243,16 +1304,16 @@ namespace fce
 		void set_direction(float dir) { this->direction = dir; }
 
 		// 获取世界坐标
-		const Point& get_position() const { return this->world_position; }
+		const Point& get_position() const { return this->position; }
 
 		// 设置世界坐标
-		void set_position(const Point& world_pos) { this->world_position = world_pos; }
+		void set_position(const Point& pos) { this->position = pos; }
 
 		// 获取精灵大小
-		const Size& get_size() const { return this->world_size; }
+		const Size& get_size() const { return this->size; }
 
 		// 设置精灵大小
-		void set_size(const Size& size) { this->world_size = size; }
+		void set_size(const Size& size) { this->size = size; }
 
 		// 设置渲染层
 		void set_render_layer(RenderLayer layer) { this->render_layer = layer; }
@@ -1266,8 +1327,8 @@ namespace fce
 		// 面向指定坐标点
 		void point_torwards(const Point& target)
 		{
-			float dx = target.x - world_position.x;
-			float dy = target.y - world_position.y;
+			float dx = target.x - position.x;
+			float dy = target.y - position.y;
 			this->direction = maths::rad_to_deg(std::atan2f(dy, dx));
 		}
 
@@ -1278,8 +1339,8 @@ namespace fce
 			SDL_GetMouseState(&mouse_x, &mouse_y);
 			auto mouse_world_pos = camera.screen_to_world(Point(mouse_x, mouse_y));
 
-			float dx = mouse_world_pos.x - world_position.x;
-			float dy = mouse_world_pos.y - world_position.y;
+			float dx = mouse_world_pos.x - position.x;
+			float dy = mouse_world_pos.y - position.y;
 
 			// 旋转方向 = 弧度转角度(atan2(目标坐标 - 自身坐标))
 			this->direction = maths::rad_to_deg(std::atan2f(dy, dx));
@@ -1291,8 +1352,8 @@ namespace fce
 		virtual void reset_property() {};					// 重置角色属性
 
 	protected:
-		Point world_position;						  // 世界坐标
-		Size world_size = { 0, 0 };					  // 精灵大小
+		Point position;								  // 世界坐标
+		Size size = { 0, 0 };						  // 精灵大小
 		Vector2 velocity;							  // 速度
 		float direction = 0.0f;						  // 方向
 		CollisionBox* hit_box = nullptr;			  // 自身碰撞箱
@@ -1309,7 +1370,7 @@ namespace fce
 		Label(const Point& position, TTF_Font* font, SDL_Color color, float size, const std::string& info) 
 			: label_color(color), label_font(font), ptsize(size), label_info(info) 
 		{
-			this->world_position = position;
+			this->position = position;
 			this->render_layer = RenderLayer::Label;
 		}
 
@@ -1326,7 +1387,7 @@ namespace fce
 		void set_info(const std::string& info) { this->label_info = info; }
 
 		void on_render(const Camera2D& camera) override
-		{ camera.render_text(world_position, label_font, label_color, ptsize, label_info.c_str()); }
+		{ camera.render_text(position, label_font, label_color, ptsize, label_info.c_str()); }
 
 	private:
 		TTF_Font* label_font = nullptr;	// 字体
@@ -1335,7 +1396,7 @@ namespace fce
 		std::string label_info;			// 文本内容
 	};
 
-	// 按钮（仅适用与UI层）
+	// 按钮（仅适用于UI层）
 	class Button : public Sprite
 	{
 		// 按钮特效对组
@@ -1344,9 +1405,10 @@ namespace fce
 		Button() = default;
 		~Button() = default;
 
-		Button(const Point& pos, const Size& size) : size(size)
+		Button(const Point& pos, const Size& size)
 		{
-			this->world_position = pos;
+			this->position = pos;
+			this->size = size;
 			this->render_layer = RenderLayer::UI;
 			this->effects["normal"] = std::make_pair(nullptr, nullptr);
 			this->effects["hover"] = std::make_pair(nullptr, nullptr);
@@ -1386,7 +1448,7 @@ namespace fce
 		void on_render(const Camera2D& camera) override
 		{
 			if (!current_texture) return;	// 如果没有设置纹理则不渲染
-			SDL_FRect rect_dst_win = { world_position.x, world_position.y, size.w, size.h };
+			SDL_FRect rect_dst_win = { position.x, position.y, size.w, size.h };
 			camera.render_texture(current_texture, nullptr, &rect_dst_win, 0);
 		}
 
@@ -1394,8 +1456,8 @@ namespace fce
 		void on_input(const SDL_Event& event) override
 		{
 			// 判断鼠标是否在按钮上悬停
-			bool in_range_x = event.motion.x >= world_position.x && event.motion.x <= world_position.x + size.w;
-			bool in_range_y = event.motion.y >= world_position.y && event.motion.y <= world_position.y + size.h;
+			bool in_range_x = event.motion.x >= position.x && event.motion.x <= position.x + size.w;
+			bool in_range_y = event.motion.y >= position.y && event.motion.y <= position.y + size.h;
 
 			if (event.type == SDL_EVENT_MOUSE_MOTION)	// 鼠标悬停在按钮上
 			{
@@ -1436,7 +1498,6 @@ namespace fce
 		}
 
 	private:
-		Size size;												// 按钮大小
 		bool is_first_hover = false;							// 是否首次悬停
 		SDL_Texture* current_texture = nullptr;					// 当前显示的纹理
 		std::unordered_map<std::string, effect_pair> effects;	// 效果列表
@@ -2049,13 +2110,13 @@ namespace fce
 						continue;
 
 					// 横向碰撞条件：两碰撞箱的maxX - 两碰撞箱的minX <= 两碰撞箱的宽度之和
-					float max_x = std::max(collision_box_src->world_position.x + collision_box_src->size.w / 2.0f, collision_box_dst->world_position.x + collision_box_dst->size.w / 2.0f);
-					float min_x = std::min(collision_box_src->world_position.x - collision_box_src->size.w / 2.0f, collision_box_dst->world_position.x - collision_box_dst->size.w / 2.0f);
+					float max_x = std::max(collision_box_src->position.x + collision_box_src->size.w / 2.0f, collision_box_dst->position.x + collision_box_dst->size.w / 2.0f);
+					float min_x = std::min(collision_box_src->position.x - collision_box_src->size.w / 2.0f, collision_box_dst->position.x - collision_box_dst->size.w / 2.0f);
 					bool is_collide_x = (max_x - min_x <= collision_box_src->size.w + collision_box_dst->size.w);
 
 					// 纵向碰撞条件：两碰撞箱的maxY - 两碰撞箱的minY <= 两碰撞箱的高度之和
-					float max_y = std::max(collision_box_src->world_position.y + collision_box_src->size.h / 2.0f, collision_box_dst->world_position.y + collision_box_dst->size.h / 2.0f);
-					float min_y = std::min(collision_box_src->world_position.y - collision_box_src->size.h / 2.0f, collision_box_dst->world_position.y - collision_box_dst->size.h / 2.0f);
+					float max_y = std::max(collision_box_src->position.y + collision_box_src->size.h / 2.0f, collision_box_dst->position.y + collision_box_dst->size.h / 2.0f);
+					float min_y = std::min(collision_box_src->position.y - collision_box_src->size.h / 2.0f, collision_box_dst->position.y - collision_box_dst->size.h / 2.0f);
 					bool is_collide_y = (max_y - min_y <= collision_box_src->size.h + collision_box_dst->size.h);
 
 					// 如果横向/纵向都成立，且目标碰撞箱存在回调函数，则执行回调函数
@@ -2077,7 +2138,7 @@ namespace fce
 				else
 					color = { 115,155,175,255 };
 
-				camera.render_shape(collision_box->world_position, collision_box->size, color, false);	// 绘制碰撞箱
+				ShapeMaker::render_CenterRect(camera, collision_box->position, collision_box->size, color); // 绘制碰撞箱
 			}
 		}
 
