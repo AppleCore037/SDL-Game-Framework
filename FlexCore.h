@@ -18,7 +18,7 @@
 #include <SDL3_mixer/SDL_mixer.h>
 #include <SDL3_ttf/SDL_ttf.h>
 
-constexpr float PAI = 3.14159265f;	// 圆周率
+constexpr float PI = 3.14159265f;	// 圆周率
 constexpr SDL_InitFlags SDL_INIT_EVERYTHING = (SDL_INIT_AUDIO | SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_JOYSTICK | SDL_INIT_HAPTIC | SDL_INIT_GAMEPAD | SDL_INIT_SENSOR);
 constexpr MIX_InitFlags MIX_INIT_EVERYTHING = (MIX_INIT_MP3 | MIX_INIT_FLAC | MIX_INIT_MID | MIX_INIT_MOD | MIX_INIT_OGG | MIX_INIT_OPUS | MIX_INIT_WAVPACK);
 
@@ -33,16 +33,22 @@ namespace fce
 	inline TTF_TextEngine* Main_TextEngine = nullptr;		// 主文字引擎
 	inline SDL_Event Main_Event;							// 主循环事件
 
-	constexpr SDL_Color Color_Red = { 255, 0, 0, 255 };			  // 正红
-	constexpr SDL_Color Color_Blue = { 0, 0, 255, 255 };		  // 正蓝
-	constexpr SDL_Color Color_Green = { 0, 255, 0, 255 };		  // 正绿
-	constexpr SDL_Color Color_White = { 255, 255, 255, 255 };	  // 正白
-	constexpr SDL_Color Color_Black = { 0, 0, 0, 255 };			  // 正黑
-	constexpr SDL_Color Color_Yellow = { 255, 255, 0, 255 };	  // 正黄
-	constexpr SDL_Color Color_Pink = { 255, 0, 255, 255 };		  // 正粉
-	constexpr SDL_Color Color_LightBlue = { 0, 255, 255, 255 };	  // 浅蓝
-	constexpr SDL_Color Color_LightGray = { 128, 128, 128, 255 }; // 浅灰
-	constexpr SDL_Color Color_DarkGray = { 50, 50, 50, 255 };	  // 暗灰
+	// 预定义颜色
+	namespace Colors
+	{
+		SDL_Color Red = { 255, 0, 0, 255 };			  // 正红
+		SDL_Color Blue = { 0, 0, 255, 255 };		  // 正蓝
+		SDL_Color Green = { 0, 255, 0, 255 };		  // 正绿
+		SDL_Color White = { 255, 255, 255, 255 };	  // 正白
+		SDL_Color Black = { 0, 0, 0, 255 };			  // 正黑
+		SDL_Color Yellow = { 255, 255, 0, 255 };	  // 正黄
+		SDL_Color Pink = { 255, 0, 255, 255 };		  // 正粉
+		SDL_Color LightBlue = { 0, 255, 255, 255 };	  // 浅蓝
+		SDL_Color LightGray = { 128, 128, 128, 255 }; // 浅灰
+		SDL_Color DarkGray = { 50, 50, 50, 255 };	  // 暗灰
+		SDL_Color Orange = { 255, 165, 0, 255 };	  // 橙色
+		SDL_Color Purple = { 128, 0, 128, 255 };	  // 紫色
+	}
 
 // ==============================================================================================
 //				基 础 枚 举 类 型						Base Enum Types
@@ -93,62 +99,6 @@ namespace fce
 // ==============================================================================================
 //				基 础 函 数						Base	Functions
 // ==============================================================================================
-
-	// 初始化基础窗口设置
-	inline void Init_Graphic(const std::string& title, int w, int h, WindowFlags flags = WindowFlags::Shown)
-	{
-		// 初始化SDL相关模块
-		SDL_Init(SDL_INIT_EVERYTHING);
-		TTF_Init();
-
-		SDL_AudioSpec spec = { SDL_AUDIO_S16, 2, 44100 };
-		Mix_Init(MIX_INIT_EVERYTHING);
-		Mix_OpenAudio(NULL, &spec);
-
-		// 初始化窗口
-		if (Main_Window) return; // 如果窗口已存在则不再创建
-		Main_Window = SDL_CreateWindow(title.c_str(), w, h, (SDL_WindowFlags)flags);
-		if (!Main_Window)
-			throw std::runtime_error(u8"Failed to create Main_Window!");
-
-		// 初始化渲染器
-		if (Main_Renderer) return;	// 如果渲染器已存在则不再创建
-		Main_Renderer = SDL_CreateRenderer(Main_Window, nullptr);
-		if (!Main_Renderer)
-			throw std::runtime_error(u8"Failed to create Main_Renderer!");
-
-		// 初始化文本引擎
-		if (Main_TextEngine) return; // 如果引擎已存在则不再创建
-		Main_TextEngine = TTF_CreateRendererTextEngine(Main_Renderer);
-		if (!Main_TextEngine)
-			throw std::runtime_error(u8"Failed to create Main_TextEngine!");
-	}
-
-	// 释放框架内置资源
-	inline void Release_Graphic()
-	{
-		// 释放内置资源
-		if (Main_TextEngine)
-		{
-			TTF_DestroyRendererTextEngine(Main_TextEngine);
-			Main_TextEngine = nullptr;
-		}
-		if (Main_Renderer)
-		{
-			SDL_DestroyRenderer(Main_Renderer);
-			Main_Renderer = nullptr;
-		}
-		if (Main_Window)
-		{
-			SDL_DestroyWindow(Main_Window);
-			Main_Window = nullptr;
-		}
-
-		// 退出SDL第三方库
-		TTF_Quit();
-		Mix_Quit();
-		SDL_Quit();
-	}
 
 	// 获取键盘/鼠标事件的UTF-8格式字符串
 	inline const char* Get_EventName(const SDL_Event& event)
@@ -212,7 +162,8 @@ namespace fce
 	{
 		Size() = default;
 		~Size() = default;
-		Size(float w, float h) : w(w), h(h) {}
+		Size(float w, float h) 
+			: w(w), h(h) {}
 
 		float w;
 		float h;
@@ -328,9 +279,9 @@ namespace fce
 		StateNode() = default;
 		~StateNode() = default;
 
-		virtual void on_enter() {}					/* 进入状态 */
-		virtual void on_update(float delta) {}		/* 更新状态 */
-		virtual void on_exit() {}					/* 退出状态 */
+		virtual void on_enter() {}					// 进入状态
+		virtual void on_update(float delta) {}		// 更新状态
+		virtual void on_exit() {}					// 退出状态
 	};
 
 // ==============================================================================================
@@ -400,62 +351,62 @@ namespace fce
 		// 起始当前帧计时
 		static void start_frame()
 		{
-			auto currentTime = clock_t::now();
-			m_instance.delta_time = static_cast<float>(std::chrono::duration_cast<ms_t>(
-				currentTime - m_instance.last_time).count());
-			m_instance.last_time = currentTime;
+			clock_t::time_point cur_time = clock_t::now();
+			m_instance.delta_time = static_cast<double>(std::chrono::duration_cast<ms_t>(cur_time - m_instance.last_time).count());
+			m_instance.last_time = cur_time;
 		}
 
 		// 结束当前帧计时
 		static void end_frame()
 		{
-			auto currentTime = clock_t::now();
-			// 获取经过时间
-			auto elapsedTime = std::chrono::duration_cast<ms_t>(currentTime - m_instance.last_time).count();
+			auto cur_time = clock_t::now();
+			auto elp_time = std::chrono::duration_cast<ms_t>(cur_time - m_instance.last_time).count(); // 经过时间
 
-			// 如果经过时间小于帧间隔就休眠
-			if (elapsedTime < m_instance.target_time)
-				std::this_thread::sleep_for(ms_t(m_instance.target_time - elapsedTime));
+			// 如果"经过时间小于帧间隔" && "启用帧率限制"就休眠
+			if (elp_time < m_instance.target_dur && m_instance.is_frame_limited)
+				std::this_thread::sleep_for(ms_t(m_instance.target_dur - elp_time));
+			else
+				std::this_thread::sleep_for(ms_t(m_instance.MIN_DUR - elp_time));
 		}
 
 		// 设置是否垂直同步（默认false）
 		static void set_VSync(bool is_abled)
 		{
 			if (is_abled)
-			{
-				int refresh = m_instance.get_screen_refreshRate();
-				m_instance.target_time = 1000 / refresh;
-			}
+				m_instance.target_dur = 1000 / m_instance.get_screen_refreshRate();
 			else
-				m_instance.target_time = 1000 / m_instance.target_fps;	// 设置为目标FPS
+				m_instance.target_dur = 1000 / m_instance.target_fps;	// 设置为目标FPS
 		}
 
 		// 设置FPS
 	 	static void set_fps(int fps_limit)
 		{
 			m_instance.target_fps = fps_limit;		// 设置目标FPS
-			m_instance.target_time = 1000 / fps_limit;
+			m_instance.target_dur = 1000 / fps_limit;
 		}
 
 		// 获取全局经过时间（秒）
 		static float get_global_time()
 		{
 			auto global_current_time = clock_t::now();
-			return static_cast<float>(std::chrono::duration_cast<ms_t>(
-				global_current_time - m_instance.global_start_time).count()) * 0.001f; // 转换为秒
+			// 转换为秒
+			return static_cast<float>(std::chrono::duration_cast<ms_t>(global_current_time - m_instance.global_start_time).count()) * 0.001f;
 		}
 
 		// 重置全局经过时间
 		static void restart_global_time() { m_instance.global_start_time = clock_t::now(); }
 
+		// 设置是否启用帧率限制（默认是true）
+		static void set_frame_limit(bool flag) { m_instance.is_frame_limited = flag; }
+
 		// 获取FPS
-		static int get_fps() { return (int)(1000 / m_instance.delta_time); }
+		static int get_fps() { return static_cast<int>(1000 / m_instance.delta_time); }
 
 		// 获取帧间隔
-		static float get_DeltaTime() { return (m_instance.delta_time / 1000.0f) * m_instance.time_scale; }
+		static float get_DeltaTime() { return static_cast<float>((m_instance.delta_time / 1000.0f) * m_instance.time_scale); }
 
 		// 设置时间缩放
-		static void set_time_scale(float scale)
+		static void set_time_scale(double scale)
 		{
 			if (scale <= 0.0f) m_instance.time_scale = 1.0f;
 			else m_instance.time_scale = scale;
@@ -464,12 +415,7 @@ namespace fce
 	private:
 		Clock()
 		{
-			this->target_fps = 60;			// 默认60帧
-			this->target_time = 1000 / target_fps;
 			this->last_time = clock_t::now();
-			this->delta_time = 0;
-			this->time_scale = 1.0f;
-
 			this->global_start_time = clock_t::now();
 		}
 
@@ -491,14 +437,16 @@ namespace fce
 		}
 
 	private:
-		static Clock m_instance;	// 单例实例
-
-		int target_fps;		// 目标FPS
-		int target_time;	// 目标帧间隔
+		static Clock m_instance;		// 单例实例
+		int target_fps = 60;			// 目标FPS
+		int target_dur = 1000 / 60;		// 目标帧间隔
+		double delta_time = 0;			// 单帧间隔
+		double time_scale = 1.0f;		// 时间缩放
+		bool is_frame_limited = true;	// 是否启用帧率限制
 		clock_t::time_point last_time;			// 经过时间
 		clock_t::time_point global_start_time;	// 全局起始时间
-		float delta_time;	// 单帧间隔
-		float time_scale;	// 时间缩放
+
+		const int MIN_DUR = 1000 / 800;		// 最小帧间隔
 	};
 	inline Clock Clock::m_instance;
 
@@ -730,10 +678,10 @@ namespace fce
 	namespace maths
 	{
 		// 角度转弧度
-		inline float deg_to_rad(float degree) noexcept { return degree * PAI / 180.0f; }
+		inline float deg_to_rad(float degree) noexcept { return degree * PI / 180.0f; }
 
 		// 弧度转角度
-		inline float rad_to_deg(float radian) noexcept { return radian * 180.0f / PAI; }
+		inline float rad_to_deg(float radian) noexcept { return radian * 180.0f / PI; }
 
 		// 插值函数
 		inline float lerp(float current, float target, float t) noexcept { return current + (target - current) * t; }
@@ -2151,4 +2099,131 @@ namespace fce
 		std::vector<CollisionBox*> collision_box_list;	// 碰撞箱列表
 	};
 	inline CollisionManager* CollisionManager::m_instance = nullptr;
+
+	// 框架类
+	class Framework
+	{
+	public:
+		Framework() = default;
+		~Framework() = default;
+
+		// 设置回调函数
+		void set_callback(std::function<void(float)> update, std::function<void()> render,
+			std::function<void(const SDL_Event&)> input)
+		{
+			this->update_callback = update;
+			this->render_callback = render;
+			this->input_callback = input;
+		}
+
+		// 初始化图形系统
+		void Init_Graphic(const std::string& title, int w, int h, WindowFlags flags = WindowFlags::Shown)
+		{
+			try
+			{
+				// 初始化SDL相关模块
+				SDL_Init(SDL_INIT_EVERYTHING);
+				TTF_Init();
+
+				SDL_AudioSpec spec = { SDL_AUDIO_S32, 2, 44100 };
+				Mix_Init(MIX_INIT_EVERYTHING);
+				Mix_OpenAudio(NULL, &spec);
+
+				// 初始化窗口
+				if (Main_Window) return; // 如果窗口已存在则不再创建
+				Main_Window = SDL_CreateWindow(title.c_str(), w, h, (SDL_WindowFlags)flags);
+				if (!Main_Window) throw std::runtime_error(u8"Failed to create Main_Window!");
+
+				// 初始化渲染器
+				if (Main_Renderer) return;	// 如果渲染器已存在则不再创建
+				Main_Renderer = SDL_CreateRenderer(Main_Window, nullptr);
+				if (!Main_Renderer) throw std::runtime_error(u8"Failed to create Main_Renderer!");
+
+				// 初始化文本引擎
+				if (Main_TextEngine) return; // 如果引擎已存在则不再创建
+				Main_TextEngine = TTF_CreateRendererTextEngine(Main_Renderer);
+				if (!Main_TextEngine) throw std::runtime_error(u8"Failed to create Main_TextEngine!");
+			}
+			catch (const std::exception& e)
+			{
+				Show_MessageBox(MsgBoxFlags::Error, "SDL Error", e.what());
+				this->Release_Graphic();
+				exit(EXIT_FAILURE);
+			}
+		}
+
+		// 主循环
+		void main_loop(int fps)
+		{
+			try
+			{
+				bool is_running = true;
+				Clock::set_fps(fps);
+
+				// 主循环
+				while (is_running)
+				{
+					// 帧开始
+					Clock::start_frame();
+
+					// 处理输入
+					while (SDL_PollEvent(&Main_Event))
+					{
+						if (Main_Event.type == SDL_EVENT_QUIT)
+							is_running = false;
+						this->input_callback(Main_Event);
+					}
+
+					// 处理数据
+					CollisionManager::instance()->process_collision();
+					this->update_callback(Clock::get_DeltaTime());
+
+					// 更新画面
+					SDL_RenderClear(Main_Renderer);
+					this->render_callback();
+					SDL_RenderPresent(Main_Renderer);
+
+					// 帧结束
+					Clock::end_frame();
+				}
+			}
+			catch (const fce::custom_error& e)
+			{
+				Show_MessageBox(MsgBoxFlags::Error, e.title(), e.what());
+				this->Release_Graphic();
+				exit(EXIT_FAILURE);
+			}
+			catch (const std::exception& e)
+			{
+				Show_MessageBox(MsgBoxFlags::Error, "SDL Error", e.what());
+				this->Release_Graphic();
+				exit(EXIT_FAILURE);
+			}
+			catch (...)
+			{
+				Show_MessageBox(MsgBoxFlags::Error, "Unknown Error", "An unknown error has occurred!");
+				this->Release_Graphic();
+				exit(EXIT_FAILURE);
+			}
+		}
+
+		// 释放图形系统
+		void Release_Graphic()
+		{
+			// 释放内置资源
+			if (Main_TextEngine) { TTF_DestroyRendererTextEngine(Main_TextEngine); }
+			if (Main_Renderer) { SDL_DestroyRenderer(Main_Renderer); }
+			if (Main_Window) { SDL_DestroyWindow(Main_Window); }
+
+			// 退出SDL第三方库
+			TTF_Quit();
+			Mix_Quit();
+			SDL_Quit();
+		}
+
+	private:
+		std::function<void(float)> update_callback;	// 更新回调函数
+		std::function<void()> render_callback;		// 渲染回调函数
+		std::function<void(const SDL_Event&)> input_callback;	// 事件回调函数
+	};
 };
