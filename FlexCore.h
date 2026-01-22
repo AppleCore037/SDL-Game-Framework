@@ -474,9 +474,10 @@ namespace fce
 		template <typename _Ty>
 		static void save(const std::string& file_name, const std::string& key, _Ty value, SvMod mod = Append)
 		{
-			std::string _Type = (typeid(_Ty) == typeid(std::string) ? "string" : typeid(_Ty).name());
-			std::string info = key + ":" + _Type + "=";
+			std::string _Type = (typeid(_Ty) == typeid(std::string) ? "string" : typeid(_Ty).name()); // 判断类型
+			std::string info = key + ":" + _Type + "=";		// 补全格式
 
+			// 判断类型是否支持
 			auto finder = std::find(m_instance.type_list.begin(), m_instance.type_list.end(), _Type);
 			if (finder == m_instance.type_list.end())
 			{
@@ -484,6 +485,7 @@ namespace fce
 				return;
 			}
 
+			// 保存写入
 			std::ofstream writer = std::ofstream(file_name + ".kvp", mod);
 			writer << info << value << std::endl;
 			writer.close();
@@ -493,23 +495,35 @@ namespace fce
 		template <typename _Ty>
 		static _Ty read(const std::string& file_name, const std::string& key)
 		{
+			// 补全目标类型
+			std::string tar_type = (typeid(_Ty) == typeid(std::string) ? "string" : typeid(_Ty).name());
 			std::ifstream reader = std::ifstream(file_name + ".kvp", std::ios::in);
-			if (!reader.is_open())
+
+			if (!reader.is_open())	// 无法打开
 			{
 				std::cerr << "DataRead Error: Cannot open file “" + file_name + ".kvp”!" << std::endl;
 				return _Ty();
 			}
+			
+			// 类型不支持
+			auto finder = std::find(m_instance.type_list.begin(), m_instance.type_list.end(), tar_type);
+			if (finder == m_instance.type_list.end())
+			{
+				std::cerr << "DataRead Error: Unsupported data type!" << std::endl;
+				return _Ty();
+			}
 
-			std::string line, tar_type = (typeid(_Ty) == typeid(std::string) ? "string" : typeid(_Ty).name());
+			// 开始读取
+			std::string line;
 			while (reader >> line)
 			{
-				std::string _Key = line.substr(0, line.find(':'));
-				std::string _Type = line.substr(line.find(':') + 1, line.find('=') - line.find(':') - 1);
+				std::string _Key = line.substr(0, line.find(':'));	// 提取键
+				std::string _Type = line.substr(line.find(':') + 1, line.find('=') - line.find(':') - 1); // 提取类型
 
-				if (_Key == key && _Type == tar_type)
+				if (_Key == key && _Type == tar_type)	// 判断键与类型是否都匹配
 				{
 					std::string _Val = line.substr(line.find('=') + 1);
-					return m_instance.type_conversion<_Ty>(_Val);
+					return m_instance.type_conversion<_Ty>(_Val);	// 转换类型
 				}
 			}
 
