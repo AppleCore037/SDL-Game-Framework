@@ -453,224 +453,106 @@ namespace fce
 	// 数据读写器
 	class Data
 	{
-		using mode_t = std::ios_base::openmode;
-		using ios_t = std::ios;
+	public:
+		// 保存方式
+		enum SvMod
+		{
+			Overwrite = std::ios::out,	// 覆盖
+			Append = std::ios::app,		// 追加
+			Truncate = std::ios::trunc	// 清空重写
+		};
 
 	public:
 		// 清空文件
-		static void clear_file(const std::string& file_name)
+		static void clear(const std::string& file_name)
 		{
-			std::ofstream writer = std::ofstream(file_name + ".kvp", ios_t::binary | ios_t::trunc);
-			if (!writer.is_open())
-			{
-				std::cerr << "Error: Cannot open file “" + file_name + ".kvp”!" << std::endl;
-				return;
-			}
+			std::ofstream writer = std::ofstream(file_name + ".kvp", SvMod::Truncate);
 			writer.close();
-			std::cout << "Log: File “" + file_name + ".kvp” cleared!" << std::endl;
 		}
 
 		// 保存数据
 		template <typename _Ty>
-		static void save_data(const std::string& file_name, const std::string& key, _Ty value)
+		static void save(const std::string& file_name, const std::string& key, _Ty value, SvMod mod = Append)
 		{
-			if constexpr (std::is_same_v<_Ty, int> || std::is_same_v<_Ty, bool>)
-				m_instance.save_int(file_name, key, value);
-			else if constexpr (std::is_same_v<_Ty, float> || std::is_same_v<_Ty, double>)
-				m_instance.save_float(file_name, key, value);
-			else if constexpr (std::is_same_v<_Ty, std::string>)
-				m_instance.save_string(file_name, key, value);
-			else if constexpr (std::is_same_v<_Ty, const char*>)
-				m_instance.save_cStr(file_name, key, value);
-			else
-				static_assert(false, "Error: Unsupported data type!");
+			std::string _Type = (typeid(_Ty) == typeid(std::string) ? "string" : typeid(_Ty).name());
+			std::string info = key + ":" + _Type + "=";
 
-			std::cout << "Log: Data saved to file “" + file_name + ".kvp”!" << std::endl;
+			auto finder = std::find(m_instance.type_list.begin(), m_instance.type_list.end(), _Type);
+			if (finder == m_instance.type_list.end())
+			{
+				std::cerr << "DataSave Error: Unsupported data type!" << std::endl;
+				return;
+			}
+
+			std::ofstream writer = std::ofstream(file_name + ".kvp", mod);
+			writer << info << value << std::endl;
+			writer.close();
 		}
 
 		// 读取数据
 		template <typename _Ty>
-		static _Ty read_data(const std::string& file_name, const std::string& key)
+		static _Ty read(const std::string& file_name, const std::string& key)
 		{
-			if constexpr (std::is_same_v<_Ty, int> || std::is_same_v<_Ty, bool>)
-				return m_instance.read_int(file_name, key);
-			else if constexpr (std::is_same_v<_Ty, float> || std::is_same_v<_Ty, double>)
-				return m_instance.read_float(file_name, key);
-			else if constexpr (std::is_same_v<_Ty, std::string> || std::is_same_v<_Ty, const char*>)
-				return m_instance.read_string(file_name, key);
-			else
-				static_assert(false, "Error: Unsupported data type!");
+			std::ifstream reader = std::ifstream(file_name + ".kvp", std::ios::in);
+			if (!reader.is_open())
+			{
+				std::cerr << "DataRead Error: Cannot open file “" + file_name + ".kvp”!" << std::endl;
+				return _Ty();
+			}
+
+			std::string line, tar_type = (typeid(_Ty) == typeid(std::string) ? "string" : typeid(_Ty).name());
+			while (reader >> line)
+			{
+				std::string _Key = line.substr(0, line.find(':'));
+				std::string _Type = line.substr(line.find(':') + 1, line.find('=') - line.find(':') - 1);
+
+				if (_Key == key && _Type == tar_type)
+				{
+					std::string _Val = line.substr(line.find('=') + 1);
+					return m_instance.type_conversion<_Ty>(_Val);
+				}
+			}
+
+			std::cerr << "DataRead Error: Not found “" + key + "” in the file: " + file_name + ".kvp!" << std::endl;
+			return _Ty();
 		}
 
 	private:
-		Data() = default;
+		Data() { m_instance.init_type_list(); }
 		~Data() = default;
 
-		// 保存int类型数据
-		void save_int(const std::string& file_name, const std::string& key, int value)
+		// 初始化类型支持表
+		void init_type_list()
 		{
-			std::ofstream writer = std::ofstream(file_name + ".kvp", ios_t::out | ios_t::app);
-			writer << key << ":" << "int=" << value << std::endl;
-			writer.close();
+			m_instance.type_list.push_back(typeid(int).name());
+			m_instance.type_list.push_back(typeid(float).name());
+			m_instance.type_list.push_back(typeid(double).name());
+			m_instance.type_list.push_back(typeid(bool).name());
+			m_instance.type_list.push_back(typeid(char).name());
+			m_instance.type_list.push_back(typeid(long long).name());
+			m_instance.type_list.push_back("string");
+			m_instance.type_list.push_back(typeid(unsigned long long).name());
+			m_instance.type_list.push_back(typeid(unsigned int).name());
 		}
 
-		// 保存float类型数据
-		void save_float(const std::string& file_name, const std::string& key, float value)
+		// 基础类型转换
+		template <typename _Ty>
+		_Ty type_conversion(const std::string& val)
 		{
-			std::ofstream writer = std::ofstream(file_name + ".kvp", ios_t::out | ios_t::app);
-			writer << key << ":" << "float=" << value << std::endl;
-			writer.close();
-		}
-
-		// 保存string类型数据
-		void save_string(const std::string& file_name, const std::string& key, const std::string& value)
-		{
-			std::ofstream writer = std::ofstream(file_name + ".kvp", ios_t::out | ios_t::app);
-			writer << key << ":" << "string=" << value << std::endl;
-			writer.close();
-		}
-
-		// 保存const char*类型数据
-		void save_cStr(const std::string& file_name, const std::string& key, const char* value)
-		{
-			std::ofstream writer = std::ofstream(file_name + ".kvp", ios_t::out | ios_t::app);
-			writer << key << ":" << "string=" << std::string(value) << std::endl;
-			writer.close();
-		}
-
-		// 读取int类型数据
-		int read_int(const std::string& file_name, const std::string& key)
-		{
-			std::ifstream reader = std::ifstream(file_name + ".kvp", ios_t::in);
-
-			// 检测文件属性是否正确
-			if (!reader.is_open())
-			{
-				std::cerr << "Error: Cannot open file “" + file_name + ".kvp”!" << std::endl;
-				return 0;
-			}
-			else
-			{
-				char first_char; reader >> first_char;
-				if (reader.eof())
-				{
-					std::cerr << "Error: File “" << file_name << "” is empty!" << std::endl;
-					return 0;
-				}
-				reader.putback(first_char);
-			}
-
-			std::string line;
-			while (std::getline(reader, line))
-			{
-				size_t type_pos = line.find(':');	// 找到类型分隔符
-				size_t value_pos = line.find('=');	// 找到值分隔符
-				if (value_pos != std::string::npos && type_pos != std::string::npos)
-				{
-					std::string type = line.substr(type_pos + 1, value_pos - type_pos - 1);	// 提取类型
-					std::string current_key = line.substr(0, type_pos);	// 提取键
-					if (current_key == key && type == "int")	// 找到目标键且类型匹配
-					{
-						auto value = std::stoi(line.substr(value_pos + 1));
-						reader.close(); return value;
-					}
-				}
-			}
-
-			reader.close();
-			std::cerr << "Error: Key “" << key << "” not found in file “" << file_name << "”!" << std::endl;
-			return 0;
-		}
-
-		// 读取float类型数据
-		float read_float(const std::string& file_name, const std::string& key)
-		{
-			std::ifstream reader = std::ifstream(file_name + ".kvp", ios_t::in);
-
-			// 检测文件属性是否正确
-			if (!reader.is_open())
-			{
-				std::cerr << "Error: Cannot open file “" + file_name + ".kvp”!" << std::endl;
-				return 0.0f;
-			}
-			else
-			{
-				char first_char; reader >> first_char;
-				if (reader.eof())
-				{
-					std::cerr << "Error: File “" << file_name << "” is empty!" << std::endl;
-					return 0.0f;
-				}
-				reader.putback(first_char);
-			}
-
-			std::string line;
-			while (std::getline(reader, line))
-			{
-				size_t type_pos = line.find(':');	// 找到类型分隔符
-				size_t value_pos = line.find('=');	// 找到值分隔符
-				if (value_pos != std::string::npos && type_pos != std::string::npos)
-				{
-					std::string type = line.substr(type_pos + 1, value_pos - type_pos - 1);	// 提取类型
-					std::string current_key = line.substr(0, type_pos);	// 提取键
-					if (current_key == key && type == "float")	// 找到目标键且类型匹配
-					{
-						auto value = std::stof(line.substr(value_pos + 1));
-						reader.close(); return value;
-					}
-				}
-			}
-
-			reader.close();
-			std::cerr << "Error: Key “" << key << "” not found in file “" << file_name << "”!" << std::endl;
-			return 0.0f;
-		}
-
-		// 读取string类型数据
-		std::string read_string(const std::string& file_name, const std::string& key)
-		{
-			std::ifstream reader = std::ifstream(file_name + ".kvp", ios_t::in);
-
-			// 检测文件属性是否正确
-			if (!reader.is_open())
-			{
-				std::cerr << "Error: Cannot open file “" + file_name + ".kvp”!" << std::endl;
-				return "";
-			}
-			else
-			{
-				char first_char; reader >> first_char;
-				if (reader.eof())
-				{
-					std::cerr << "Error: File “" << file_name << "” is empty!" << std::endl;
-					return "";
-				}
-				reader.putback(first_char);
-			}
-
-			std::string line;
-			while (std::getline(reader, line))
-			{
-				size_t type_pos = line.find(':');	// 找到类型分隔符
-				size_t value_pos = line.find('=');	// 找到值分隔符
-				if (value_pos != std::string::npos && type_pos != std::string::npos)
-				{
-					std::string type = line.substr(type_pos + 1, value_pos - type_pos - 1);	// 提取类型
-					std::string current_key = line.substr(0, type_pos);	// 提取键
-					if (current_key == key && type == "string")	// 找到目标键且类型匹配
-					{
-						auto value = line.substr(value_pos + 1);
-						reader.close(); return value;
-					}
-				}
-			}
-			reader.close();
-			std::cerr << "Error: Key “" << key << "” not found in file “" << file_name << "”!" << std::endl;
-			return "";
+			if constexpr (std::is_same_v<_Ty, std::string>) return val;
+			if constexpr (std::is_same_v<_Ty, bool>) return (val == "1" || val == "true");
+			if constexpr (std::is_same_v<_Ty, char>) return val[0];
+			if constexpr (std::is_same_v<_Ty, int>) return std::stoi(val);
+			if constexpr (std::is_same_v<_Ty, float>) return std::stof(val);
+			if constexpr (std::is_same_v<_Ty, double>) return std::stod(val);
+			if constexpr (std::is_same_v<_Ty, long long>) return std::stoll(val);
+			if constexpr (std::is_same_v<_Ty, unsigned long long>) return std::stoull(val);
+			if constexpr (std::is_same_v<_Ty, unsigned int>) return std::stoul(val);
 		}
 
 	private:
 		static Data m_instance;	// 单例实例
+		std::vector<std::string> type_list;	// 类型支持表
 	};
 	inline Data Data::m_instance;
 
