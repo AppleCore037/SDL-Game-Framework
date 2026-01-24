@@ -9,6 +9,8 @@
 #include <iostream>
 #include <random>
 #include <thread>
+#include <unordered_map>
+#include <typeindex>
 
 namespace fce
 {
@@ -123,6 +125,23 @@ namespace fce
 			Truncate = std::ios::trunc	// 清空重写
 		};
 
+	public:
+		// 清空文件
+		static void clear(const std::string& fname);
+
+		// 保存文件（序列化格式）
+		template <typename _Ty>
+		static void save(const std::string& fname, const std::string& key, _Ty val, SvMod mod = Append);
+		
+		// 读取文件
+		template <typename _Ty>
+		static _Ty read(const std::string& fname, const std::string& key);
+
+	private:
+		Data() = default;
+		~Data() = default;
+
+	private:
 		// 数据类型
 		enum DataType : uint8_t
 		{
@@ -142,32 +161,7 @@ namespace fce
 			COSTUM		// 自定义
 		};
 
-	public:
-		// 清空文件
-		static void clear(const std::string& file_name);
-
-		// 保存数据
-		template <typename _Ty>
-		static void save(const std::string& fname, const std::string& key, _Ty value, SvMod mod = Append);
-
-		// 读取数据
-		template <typename _Ty>
-		static _Ty read(const std::string& file_name, const std::string& key);
-
-	private:
-		Data();
-		~Data() = default;
-
-		// 初始化类型支持表
-		void init_type_list();
-
-		// 基础类型转换
-		template <typename _Ty>
-		_Ty type_conversion(const std::string& val);
-
-	private:
-		static Data m_instance;	// 单例实例
-		std::vector<std::string> type_list;	// 类型支持表
+		static std::unordered_map<std::type_index, DataType> type_map;
 	};
 
 	// 数学运算工具
@@ -189,3 +183,121 @@ namespace fce
 		float swing(float min, float max, float strength);
 	};
 };
+
+// ======================================= Data =======================================
+
+// 保存文件（序列化格式）
+template <typename _Ty>
+inline void fce::Data::save(const std::string& fname, const std::string& key, _Ty val, SvMod mod)
+{
+	auto _Type = std::type_index(typeid(_Ty));	// 构造类型索引
+	bool is_std_type = (type_map.find(_Type) != type_map.end());	// 判断是否为标准类型
+	bool is_std_custom = (std::is_trivially_copyable_v<_Ty> && std::is_standard_layout_v<_Ty>);	// 判断是否是合法自定义类型
+
+	// 如果二者都不是，则报错
+	if (!is_std_type && !is_std_custom)
+	{
+		std::string info = std::string("“") + typeid(_Ty).name() + std::string("”");
+		std::cerr << "DataSave Error: Unsupported data type: " << info << std::endl;
+		return;
+	}
+
+	std::ofstream ofs = std::ofstream(fname + ".kvp", std::ios::binary | mod);
+
+	// 写入键
+	size_t key_len = key.size();
+	ofs.write((const char*)&key_len, sizeof(size_t));	// 写入键的大小
+	ofs.write(key.c_str(), key_len);	// 写入键的内容
+
+	ofs.write((const char*)&type_map[_Type], sizeof(DataType));	// 写入类型
+	
+	// 写入值，是string需要特殊处理
+	if constexpr (std::is_same_v<_Ty, std::string> || std::is_same_v<_Ty, const char*>)
+	{
+		std::string tmp_str;
+		if constexpr (std::is_same_v<_Ty, const char*>) tmp_str = std::string(val);
+		else tmp_str = val;
+
+		size_t len = tmp_str.size();
+		size_t type_size = sizeof(size_t) + len;	// 一共多大
+
+		ofs.write((const char*)&type_size, sizeof(size_t));	// 写入总大小
+		ofs.write((const char*)&len, sizeof(size_t));	// 写入字符串长度
+		ofs.write(tmp_str.c_str(), len);	// 写入字符串内容
+	}
+	else	// 不是string
+	{
+		_Ty tmp = val; size_t type_size = sizeof(_Ty);
+		ofs.write((const char*)&type_size, sizeof(size_t));	// 写入类型大小
+		ofs.write((const char*)&tmp, type_size);	// 写入值
+	}
+
+	ofs.close();
+}
+
+// 读取文件
+template <typename _Ty>
+inline _Ty fce::Data::read(const std::string& fname, const std::string& key)
+{
+	bool is_std_type = (type_map.find(std::type_index(typeid(_Ty))) != type_map.end()); // 判断是否为标准类型
+	bool is_std_custom = (std::is_trivially_copyable_v<_Ty> && std::is_standard_layout_v<_Ty>); // 判断是否是合法自定义类型
+
+	// 如果二者都不是，则报错
+	if (!is_std_type && !is_std_custom)
+	{
+		std::string info = std::string("“") + typeid(_Ty).name() + std::string("”");
+		std::cerr << "DataRead Error: Unsupported data type: " << info << std::endl;
+		return _Ty();
+	}
+	if constexpr (std::is_same_v<_Ty, const char*>)	// 禁止const char*传参
+		throw fce::custom_error("DataRead Error", "Can't pass <const char*> return variable\nPlease use std::string!");
+
+	DataType tar_type = type_map[std::type_index(typeid(_Ty))];	// 目标类型映射
+	_Ty ret_value = _Ty();	// 返回值
+
+	std::ifstream ifs = std::ifstream(fname + ".kvp", std::ios::in | std::ios::binary);
+	if (!ifs.is_open())	// 打开失败
+	{
+		std::cerr << "DataRead Error: Cannot open file: “" << fname << ".kvp”!" << std::endl;
+		return _Ty();
+	}
+
+	while (ifs.peek() != EOF)
+	{
+		// 读取键
+		std::string _Key; size_t key_len;
+		ifs.read((char*)&key_len, sizeof(key_len));	// 读取键的大小
+		_Key.resize(key_len);
+		ifs.read(_Key.data(), key_len);		// 读取键的内容
+
+		// 读取类型
+		DataType cur_type;
+		ifs.read((char*)&cur_type, sizeof(DataType));
+
+		// 读取类型大小
+		size_t type_size;
+		ifs.read((char*)&type_size, sizeof(size_t));
+
+		if (_Key == key && cur_type == tar_type)
+		{
+			if (cur_type != STRING)	// 不是string
+				ifs.read((char*)&ret_value, sizeof(_Ty));
+			else if (cur_type == STRING)	// 是string
+			{
+				std::string tmp_str; size_t len;
+				ifs.read((char*)&len, sizeof(size_t));
+				tmp_str.resize(len);
+				ifs.read(tmp_str.data(), len);
+
+				if constexpr (std::is_same_v<_Ty, std::string>)
+					ret_value = tmp_str;
+			}
+			return ret_value;
+		}
+		else
+			ifs.ignore(type_size);
+	}
+
+	std::cerr << "DataRead Error: Cannot found key of value is “" << key << "” in the “" << fname + ".kvp”" << std::endl;
+	return _Ty();
+}

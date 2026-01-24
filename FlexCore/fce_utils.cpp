@@ -144,108 +144,36 @@ void fce::Clock::set_time_scale(double scale)
 
 // ======================================= Data =======================================
 
-fce::Data fce::Data::m_instance;
-
-fce::Data::Data()
-{
-	m_instance.init_type_list();
-}
+std::unordered_map<std::type_index, fce::Data::DataType> fce::Data::type_map = {
+	{ std::type_index(typeid(short)), SHORT },
+	{ std::type_index(typeid(unsigned short)), USHORT },
+	{ std::type_index(typeid(int)), INT },
+	{ std::type_index(typeid(unsigned int)), UINT },
+	{ std::type_index(typeid(long)), LONG },
+	{ std::type_index(typeid(long long)), LLONG },
+	{ std::type_index(typeid(unsigned long long)), ULLONG },
+	{ std::type_index(typeid(float)), FLOAT },
+	{ std::type_index(typeid(double)), DOUBLE },
+	{ std::type_index(typeid(bool)), BOOL },
+	{ std::type_index(typeid(char)), CHAR },
+	{ std::type_index(typeid(unsigned char)), UCHAR },
+	{ std::type_index(typeid(std::string)), STRING },
+	{ std::type_index(typeid(const char*)), STRING }
+};
 
 // 清空文件
-void fce::Data::clear(const std::string& file_name)
+void fce::Data::clear(const std::string& fname)
 {
-	std::ofstream writer = std::ofstream(file_name + ".kvp", SvMod::Truncate);
-	writer.close();
-}
-
-// 初始化类型支持表
-void fce::Data::init_type_list()
-{
-	m_instance.type_list.push_back(typeid(int).name());
-	m_instance.type_list.push_back(typeid(float).name());
-	m_instance.type_list.push_back(typeid(double).name());
-	m_instance.type_list.push_back(typeid(bool).name());
-	m_instance.type_list.push_back(typeid(char).name());
-	m_instance.type_list.push_back(typeid(long long).name());
-	m_instance.type_list.push_back("string");
-	m_instance.type_list.push_back(typeid(unsigned long long).name());
-	m_instance.type_list.push_back(typeid(unsigned int).name());
-}
-
-// 保存数据
-template<typename _Ty>
-void fce::Data::save(const std::string& fname, const std::string& key, _Ty value, SvMod mod)
-{
-	std::string _Type = (typeid(_Ty) == typeid(std::string) ? "string" : typeid(_Ty).name()); // 判断类型
-	std::string info = key + ":" + _Type + "=";		// 补全格式
-
-	// 判断类型是否支持
-	auto finder = std::find(m_instance.type_list.begin(), m_instance.type_list.end(), _Type);
-	if (finder == m_instance.type_list.end())
+	std::ifstream check = std::ifstream(fname + ".kvp", std::ios::in);
+	if (!check.is_open())
 	{
-		std::cerr << "DataSave Error: Unsupported data type!" << std::endl;
+		std::cerr << "DataClear Error: “" << fname + ".kvp" << "” is not found!" << std::endl;
 		return;
 	}
+	check.close();
 
-	// 保存写入
-	std::ofstream writer = std::ofstream(fname + ".kvp", mod);
-	writer << info << value << std::endl;
-	writer.close();
-}
-
-// 读取数据
-template<typename _Ty>
-_Ty fce::Data::read(const std::string& file_name, const std::string& key)
-{
-	// 补全目标类型
-	std::string tar_type = (typeid(_Ty) == typeid(std::string) ? "string" : typeid(_Ty).name());
-	std::ifstream reader = std::ifstream(file_name + ".kvp", std::ios::in);
-
-	if (!reader.is_open())	// 无法打开
-	{
-		std::cerr << "DataRead Error: Cannot open file “" + file_name + ".kvp”!" << std::endl;
-		return _Ty();
-	}
-
-	// 类型不支持
-	auto finder = std::find(m_instance.type_list.begin(), m_instance.type_list.end(), tar_type);
-	if (finder == m_instance.type_list.end())
-	{
-		std::cerr << "DataRead Error: Unsupported data type!" << std::endl;
-		return _Ty();
-	}
-
-	// 开始读取
-	std::string line;
-	while (reader >> line)
-	{
-		std::string _Key = line.substr(0, line.find(':'));	// 提取键
-		std::string _Type = line.substr(line.find(':') + 1, line.find('=') - line.find(':') - 1); // 提取类型
-
-		if (_Key == key && _Type == tar_type)	// 判断键与类型是否都匹配
-		{
-			std::string _Val = line.substr(line.find('=') + 1);
-			return m_instance.type_conversion<_Ty>(_Val);	// 转换类型
-		}
-	}
-
-	std::cerr << "DataRead Error: Not found “" + key + "” in the file: " + file_name + ".kvp!" << std::endl;
-	return _Ty();
-}
-
-// 基础类型转换
-template<typename _Ty>
-_Ty fce::Data::type_conversion(const std::string& val)
-{
-	if constexpr (std::is_same_v<_Ty, std::string>) return val;
-	if constexpr (std::is_same_v<_Ty, bool>) return (val == "1" || val == "true");
-	if constexpr (std::is_same_v<_Ty, char>) return val[0];
-	if constexpr (std::is_same_v<_Ty, int>) return std::stoi(val);
-	if constexpr (std::is_same_v<_Ty, float>) return std::stof(val);
-	if constexpr (std::is_same_v<_Ty, double>) return std::stod(val);
-	if constexpr (std::is_same_v<_Ty, long long>) return std::stoll(val);
-	if constexpr (std::is_same_v<_Ty, unsigned long long>) return std::stoull(val);
-	if constexpr (std::is_same_v<_Ty, unsigned int>) return std::stoul(val);
+	std::ofstream cleaner = std::ofstream(fname + ".kvp", std::ios::trunc);
+	cleaner.close();
 }
 
 // ======================================= maths =======================================
