@@ -33,7 +33,8 @@ public:
 	~Game() = default;
 
 	// 初始化
-	static void Init_Graphic(const char* title, const Size& size, WindowFlags flag = WindowFlags::Default, const Size& normal_size = { 1280, 720 })
+	static void Init_Graphic(const char* title, const Size& size, WindowFlags flag = WindowFlags::Default, 
+		const Size& normal_size = { 1280, 720 })
 	{
 		try
 		{
@@ -62,23 +63,23 @@ public:
 			UI_Camera = new Camera({ size.w / 2.0f, size.h / 2.0f });
 
 			// 设置默认屏幕大小
-			Set_NormalWindowSize((int)normal_size.w, (int)normal_size.h);
+			utils::Set_NormalWindowSize((int)normal_size.w, (int)normal_size.h);
 		}
 		catch (const std::exception& e)
 		{
-			Show_MessageBox(MsgBoxFlags::Error, "SDL Error", e.what());
+			utils::Show_MessageBox(MsgBoxFlags::Error, "SDL Error", e.what());
 			Release_Graphic();
 			exit(EXIT_FAILURE);
 		}
 		catch (const custom_error& e)
 		{
-			Show_MessageBox(MsgBoxFlags::Error, e.title(), e.what());
+			utils::Show_MessageBox(MsgBoxFlags::Error, e.title(), e.what());
 			Release_Graphic();
 			exit(EXIT_FAILURE);
 		}
 		catch (...)
 		{
-			Show_MessageBox(MsgBoxFlags::Error, "Unknow Error", "An unknown error has occurred!");
+			utils::Show_MessageBox(MsgBoxFlags::Error, "Unknow Error", "An unknown error has occurred!");
 			Release_Graphic();
 			exit(EXIT_FAILURE);
 		}
@@ -93,19 +94,19 @@ public:
 		}
 		catch (const std::exception& e)
 		{
-			Show_MessageBox(MsgBoxFlags::Error, "SDL Error", e.what());
+			utils::Show_MessageBox(MsgBoxFlags::Error, "SDL Error", e.what());
 			Release_Graphic();
 			exit(EXIT_FAILURE);
 		}
 		catch (const custom_error& e)
 		{
-			Show_MessageBox(MsgBoxFlags::Error, e.title(), e.what());
+			utils::Show_MessageBox(MsgBoxFlags::Error, e.title(), e.what());
 			Release_Graphic();
 			exit(EXIT_FAILURE);
 		}
 		catch (...)
 		{
-			Show_MessageBox(MsgBoxFlags::Error, "Unknow Error", "An unknown error has occurred!");
+			utils::Show_MessageBox(MsgBoxFlags::Error, "Unknow Error", "An unknown error has occurred!");
 			Release_Graphic();
 			exit(EXIT_FAILURE);
 		}
@@ -150,19 +151,19 @@ public:
 		}
 		catch (const custom_error& e)
 		{
-			Show_MessageBox(MsgBoxFlags::Error, e.title(), e.what());
+			utils::Show_MessageBox(MsgBoxFlags::Error, e.title(), e.what());
 			Release_Graphic();
 			exit(EXIT_FAILURE);
 		}
 		catch (const std::exception& e)
 		{
-			Show_MessageBox(MsgBoxFlags::Error, "SDL Error", e.what());
+			utils::Show_MessageBox(MsgBoxFlags::Error, "SDL Error", e.what());
 			Release_Graphic();
 			exit(EXIT_FAILURE);
 		}
 		catch (...)
 		{
-			Show_MessageBox(MsgBoxFlags::Error, "Unknow Error", "An unknown error has occurred!");
+			utils::Show_MessageBox(MsgBoxFlags::Error, "Unknow Error", "An unknown error has occurred!");
 			Release_Graphic();
 			exit(EXIT_FAILURE);
 		}
@@ -177,19 +178,19 @@ public:
 		}
 		catch (const custom_error& e)
 		{
-			Show_MessageBox(MsgBoxFlags::Error, e.title(), e.what());
+			utils::Show_MessageBox(MsgBoxFlags::Error, e.title(), e.what());
 			Release_Graphic();
 			exit(EXIT_FAILURE);
 		}
 		catch (const std::exception& e)
 		{
-			Show_MessageBox(MsgBoxFlags::Error, "SDL Error", e.what());
+			utils::Show_MessageBox(MsgBoxFlags::Error, "SDL Error", e.what());
 			Release_Graphic();
 			exit(EXIT_FAILURE);
 		}
 		catch (...)
 		{
-			Show_MessageBox(MsgBoxFlags::Error, "Unknow Error", "An unknown error has occurred!");
+			utils::Show_MessageBox(MsgBoxFlags::Error, "Unknow Error", "An unknown error has occurred!");
 			Release_Graphic();
 			exit(EXIT_FAILURE);
 		}

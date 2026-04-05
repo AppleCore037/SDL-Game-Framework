@@ -36,35 +36,36 @@ public:
 
 		if (!exists(directory))	// 判断文件是否存在
 		{
-			std::u8string _Info = u8"Dictionary “" + std::u8string((const char8_t*)directory) + u8"” is an error dictionary!";
-			throw custom_error(u8"ResourcesManager Error", _Info.c_str());
+			std::u8string _info = u8"Dictionary “" + std::u8string((const char8_t*)directory) + u8"” is an error dictionary!";
+			throw custom_error(u8"ResourcesManager Error", _info.c_str());
 		}
 
 		// 遍历目标文件内部所有文件
-		for (const auto& _Entry : recursive_directory_iterator(directory))
+		for (const auto& _entry : recursive_directory_iterator(directory))
 		{
-			if (_Entry.is_regular_file())	// 如果是有效文件
+			if (_entry.is_regular_file())	// 如果是有效文件
 			{
-				const auto& _Path = _Entry.path();
-				if (_Path.extension() == ".bmp" || _Path.extension() == ".png" || _Path.extension() == ".jpg")
+				const auto& _path = _entry.path();
+				if (_path.extension() == ".bmp" || _path.extension() == ".png" || _path.extension() == ".jpg")
 				{
-					SDL_Texture* _Texture = IMG_LoadTexture(Main_Renderer, _Path.string().c_str());
-					texture_pool[_Path.stem().string()] = _Texture;
+					SDL_Texture* _texture = IMG_LoadTexture(Main_Renderer, _path.string().c_str());
+					SDL_SetTextureScaleMode(_texture, scale_mode);	// 设置缩放模式
+					texture_pool[_path.stem().string()] = _texture;
 				}
-				if (_Path.extension() == ".wav")
+				if (_path.extension() == ".wav")
 				{
-					Mix_Chunk* _Audio = Mix_LoadWAV(_Path.string().c_str());
-					audio_pool[_Path.stem().string()] = _Audio;
+					Mix_Chunk* _audio = Mix_LoadWAV(_path.string().c_str());
+					audio_pool[_path.stem().string()] = _audio;
 				}
-				if (_Path.extension() == ".mp3" || _Path.extension() == ".ogg")
+				if (_path.extension() == ".mp3" || _path.extension() == ".ogg")
 				{
-					Mix_Music* _Music = Mix_LoadMUS(_Path.string().c_str());
-					music_pool[_Path.stem().string()] = _Music;
+					Mix_Music* _music = Mix_LoadMUS(_path.string().c_str());
+					music_pool[_path.stem().string()] = _music;
 				}
-				if (_Path.extension() == ".ttf" || _Path.extension() == ".TTF" || _Path.extension() == ".ttc")
+				if (_path.extension() == ".ttf" || _path.extension() == ".TTF" || _path.extension() == ".ttc")
 				{
-					TTF_Font* _Font = TTF_OpenFont(_Path.string().c_str(), 24);	// 默认24号
-					font_pool[_Path.stem().string()] = _Font;
+					TTF_Font* _font = TTF_OpenFont(_path.string().c_str(), 24);	// 默认24号
+					font_pool[_path.stem().string()] = _font;
 				}
 			}
 		}
@@ -76,8 +77,8 @@ public:
 	{
 		if (texture_pool.find(name) == texture_pool.end())
 		{
-			std::u8string _Info = u8"Texture “" + std::u8string((const char8_t*)name.c_str()) + u8"” is not found!";
-			throw custom_error(u8"ResourcesManager Error", _Info.c_str());
+			std::u8string _info = u8"Texture “" + std::u8string((const char8_t*)name.c_str()) + u8"” is not found!";
+			throw custom_error(u8"ResourcesManager Error", _info.c_str());
 		}
 		return texture_pool[name];
 	}
@@ -87,8 +88,8 @@ public:
 	{
 		if (audio_pool.find(name) == audio_pool.end())
 		{
-			std::u8string _Info = u8"Audio “" + std::u8string((const char8_t*)name.c_str()) + u8"” is not found!";
-			throw custom_error(u8"ResourcesManager Error", _Info.c_str());
+			std::u8string _info = u8"Audio “" + std::u8string((const char8_t*)name.c_str()) + u8"” is not found!";
+			throw custom_error(u8"ResourcesManager Error", _info.c_str());
 		}
 		return audio_pool[name];
 	}
@@ -98,8 +99,8 @@ public:
 	{
 		if (music_pool.find(name) == music_pool.end())
 		{
-			std::u8string _Info = u8"Music “" + std::u8string((const char8_t*)name.c_str()) + u8"” is not found!";
-			throw custom_error(u8"ResourcesManager Error", _Info.c_str());
+			std::u8string _info = u8"Music “" + std::u8string((const char8_t*)name.c_str()) + u8"” is not found!";
+			throw custom_error(u8"ResourcesManager Error", _info.c_str());
 		}
 		return music_pool[name];
 	}
@@ -109,8 +110,8 @@ public:
 	{
 		if (font_pool.find(name) == font_pool.end())
 		{
-			std::u8string _Info = u8"Font “" + std::u8string((const char8_t*)name.c_str()) + u8"” is not found!";
-			throw custom_error(u8"ResourcesManager Error", _Info.c_str());
+			std::u8string _info = u8"Font “" + std::u8string((const char8_t*)name.c_str()) + u8"” is not found!";
+			throw custom_error(u8"ResourcesManager Error", _info.c_str());
 		}
 		return font_pool[name];
 	}
@@ -120,18 +121,18 @@ public:
 	{
 		printf("================================\n");
 		printf("已加载的纹理资源如下 (共%d个):\n", (int)texture_pool.size());
-		for (auto& texture : texture_pool)
-			printf("%s\n", texture.first.c_str());
+		for (auto& _texture : texture_pool)
+			printf("%s\n", _texture.first.c_str());
 
 		printf("\n已加载的音频资源如下 (共%d个):\n", (int)audio_pool.size() + (int)music_pool.size());
-		for (auto& audio : audio_pool)
-			printf("%s\n", audio.first.c_str());
-		for (auto& music : music_pool)
-			printf("%s\n", music.first.c_str());
+		for (auto& _audio : audio_pool)
+			printf("%s\n", _audio.first.c_str());
+		for (auto& _music : music_pool)
+			printf("%s\n", _music.first.c_str());
 
 		printf("\n已加载的字体资源如下 (共%d个):\n", (int)font_pool.size());
-		for (auto& font : font_pool)
-			printf("%s\n", font.first.c_str());
+		for (auto& _font : font_pool)
+			printf("%s\n", _font.first.c_str());
 		printf("================================\n");
 	}
 
@@ -255,8 +256,8 @@ public:
 	{
 		if (scene_pool.find(name) == scene_pool.end())
 		{
-			std::u8string _Info = u8"Scene “" + std::u8string((const char8_t*)name.c_str()) + u8"” is not exist!";
-			throw custom_error(u8"Scene Manager Error", _Info.c_str());
+			std::u8string _info = u8"Scene “" + std::u8string((const char8_t*)name.c_str()) + u8"” is not exist!";
+			throw custom_error(u8"Scene Manager Error", _info.c_str());
 		}
 
 		current_scene = scene_pool[name];
@@ -269,8 +270,8 @@ public:
 
 		if (scene_pool.find(name) == scene_pool.end())
 		{
-			std::u8string _Info = u8"Scene “" + std::u8string((const char8_t*)name.c_str()) + u8"” is not exist!";
-			throw custom_error(u8"Scene Manager Error", _Info.c_str());
+			std::u8string _info = u8"Scene “" + std::u8string((const char8_t*)name.c_str()) + u8"” is not exist!";
+			throw custom_error(u8"Scene Manager Error", _info.c_str());
 		}
 
 		current_scene = scene_pool[name];
@@ -281,8 +282,8 @@ public:
 	{
 		if (scene_pool.find(name) != scene_pool.end())
 		{
-			std::u8string _Info = u8"Scene “" + std::u8string((const char8_t*)name.c_str()) + u8"” is already exist!";
-			throw custom_error(u8"SceneManager Error", _Info.c_str());
+			std::u8string _info = u8"Scene “" + std::u8string((const char8_t*)name.c_str()) + u8"” is already exist!";
+			throw custom_error(u8"SceneManager Error", _info.c_str());
 		}
 		scene_pool[name] = scene;
 	}
@@ -291,8 +292,8 @@ public:
 	{
 		if (scene_pool.find(name) == scene_pool.end())
 		{
-			std::u8string _Info = u8"Scene “" + std::u8string((const char8_t*)name.c_str()) + u8"” is not exist!";
-			throw custom_error(u8"Scene Manager Error", _Info.c_str());
+			std::u8string _info = u8"Scene “" + std::u8string((const char8_t*)name.c_str()) + u8"” is not exist!";
+			throw custom_error(u8"Scene Manager Error", _info.c_str());
 		}
 		return scene_pool[name];
 	}

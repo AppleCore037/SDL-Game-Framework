@@ -161,6 +161,9 @@ public:
 	// 设置锚点(0.0 ~ 1.0)
 	void set_center(const Vector2& anchor) { center = anchor; }
 
+	// 设置缩放
+	void set_scale(const Vector2& scale) { this->scale = scale; }
+
 	// 从长图中添加序列帧
 	void add_frame(SDL_Texture* texture, int num_h)
 	{
@@ -200,7 +203,7 @@ public:
 	void on_render(const Camera& camera)
 	{
 		const Frame& _Frame = frame_list[idx_frame];
-		SDL_FRect _Rect_dst = { position.x, position.y, _Frame.rect_src.w, _Frame.rect_src.h };
+		SDL_FRect _Rect_dst = { position.x, position.y, _Frame.rect_src.w * scale.x, _Frame.rect_src.h * scale.y };
 		Renderer::render_texture(camera, _Frame.texture, &_Frame.rect_src, &_Rect_dst, angle, center, is_flip);
 	}
 
@@ -223,6 +226,7 @@ private:
 	double angle = 0.0;				// 角度
 	Vector2 center = { 0, 0 };		// 渲染锚点
 	bool is_flip = false;			// 是否反转
+	Vector2 scale = { 1.0f, 1.0f };	// 缩放
 
 	Timer timer;						// 帧计时器
 	bool is_loop = true;				// 是否循环
@@ -435,82 +439,63 @@ public:
 	virtual void on_input(const SDL_Event& event) = 0;	// 输入
 	virtual void reset_props() = 0;						// 重置属性
 	
-	// 属性访问（只读）
-	const Vector2& get_position() const { return this->position; }
-	const Size& get_size() const { return this->size; }
+	SDL_FRect& get_rect() { return this->rect; }
+	const Vector2& get_scale() const { return this->scale; }
+	const Vector2& get_anchor() const { return this->anchor; }
 	bool get_flip() const { return this->is_flip; }
 	RenderLayer get_layer() const { return this->render_layer; }
+	const std::string& get_tag() const { return this->tag; }
+	const std::string& get_group_tag() const { return group_tag; }
 
-	// 属性访问（只写）
-	void set_position(const Vector2& pos) { this->position = pos; }
-	void set_size(const Size& size) { this->size = size; }
 	void set_flip(bool flag) { this->is_flip = flag; }
 	void set_layer(RenderLayer layer) { this->render_layer = layer; }
+	void set_anchor(const Vector2& center) { this->anchor = center; }
+	void set_scale(const Vector2& val) { this->scale = val; }
+	void set_tag(const std::string& name) { this->tag = name; }
+	void set_group_tag(const std::string& name) { this->group_tag = name; }
 
 protected:
-	Vector2 position = { 0, 0 };	// 位置
-	Size size = { 0, 0 };			// 大小
-	Vector2 anchor = { 0, 0 };		// 锚点
+	SDL_FRect rect = { 0, 0, 0, 0 }; // 绘制矩形
+	Vector2 anchor = { 0, 0 };		 // 锚点
+	Vector2 scale = { 0, 0 };		 // 缩放
 
 	bool is_flip = false;			// 是否反转
 	RenderLayer render_layer = RenderLayer::None;	// 渲染层
+	std::string tag = "";		 // 标签
+
+private:
+	std::string group_tag = "";	 // 所属组标签
 };
 
 // 精灵组
-export class SpriteGroup : public Sprite
+export class SpriteGroup
 {
 public:
 	SpriteGroup() = default;
-	~SpriteGroup() override = default;
-
-	void on_update(float delta) override
-	{
-		for (Sprite* _Sprite : sprite_list)
-			_Sprite->on_update(delta);
-	}
-
-	void on_render(const Camera& camera) override
-	{
-		std::sort(sprite_list.begin(), sprite_list.end(), [](Sprite* a, Sprite* b)
-			{
-				// 让精灵先按照渲染层，再按照Y轴排序
-				if (a->get_layer() != b->get_layer())
-					return a->get_layer() < b->get_layer();
-				else
-					return a->get_position().y < b->get_position().y;
-			});
-
-		for (Sprite* _Sprite : sprite_list)
-			_Sprite->on_render(camera);
-	}
-
-	void on_input(const SDL_Event& event) override
-	{
-		for (Sprite* _Sprite : sprite_list)
-			_Sprite->on_input(event);
-	}
-
-	void reset_props() override
-	{
-		for (Sprite* _Sprite : sprite_list)
-			_Sprite->reset_props();
-	}
+	~SpriteGroup() = default;
 
 	// 添加精灵
-	void add_sprite(Sprite* sprite) { sprite_list.push_back(sprite); }
-
-	// 移除精灵
-	void remove_sprite(Sprite* sprite)
+	void add_sprite(Sprite* sprite) 
 	{
-		sprite_list.erase(std::remove(sprite_list.begin(), sprite_list.end(), sprite),
-			sprite_list.end());
+		sprite_list.push_back(sprite);
+		pos_index[sprite] = sprite_list.size() - 1;
 	}
 
-	// 获取精灵列表
-	std::vector<Sprite*>& view() { return this->sprite_list; }
+	// 删除精灵
+	void erase_sprite(Sprite* sprite)
+	{
+		pos_index[sprite_list[sprite_list.size() - 1]] = pos_index[sprite];
+		std::swap(sprite_list[pos_index[sprite]], sprite_list[sprite_list.size() - 1]);
+		sprite_list.pop_back();
+		pos_index.erase(sprite);
+	}
+
+	// 返回组
+	std::vector<Sprite*>& range() { return sprite_list; }
 
 private:
-	std::vector<Sprite*> sprite_list;	// 精灵列表
+	std::vector<Sprite*> sprite_list;
+	std::unordered_map<Sprite*, size_t> pos_index;
 };
 
 // 场景
@@ -541,6 +526,17 @@ public:
 	// 更新场景
 	virtual void on_update(float delta)
 	{
+		// 对精灵列表排序
+		std::sort(sprite_list.begin(), sprite_list.end(), [](Sprite* a, Sprite* b)
+			{
+				// 让精灵先按照渲染层，再按照Y轴排序
+				if (a->get_layer() != b->get_layer())
+					return a->get_layer() < b->get_layer();
+				else
+					return a->get_rect().y < b->get_rect().y;
+			});
+		this->rebuild_pos_index();
+
 		// 更新精灵
 		for (Sprite* sprite : sprite_list)
 			sprite->on_update(delta);
@@ -553,20 +549,13 @@ public:
 	// 渲染画面
 	virtual void on_render(const Camera& cam_game, const Camera& cam_ui)
 	{
-		// 1.对精灵列表排序
-		std::sort(sprite_list.begin(), sprite_list.end(), [](Sprite* a, Sprite* b)
-			{
-				// 让精灵先按照渲染层，再按照Y轴排序
-				if (a->get_layer() != b->get_layer())
-					return a->get_layer() < b->get_layer();
-				else
-					return a->get_position().y < b->get_position().y;
-			});
-
-		// 2.渲染精灵
+		// 渲染精灵
 		for (Sprite* sprite : sprite_list)
 		{
-			bool in_range = cam_game.target_in_view(sprite->get_position(), sprite->get_size());
+			const Vector2& sprite_pos = { sprite->get_rect().x, sprite->get_rect().y };
+			const Size& sprite_size = { sprite->get_rect().w, sprite->get_rect().h };
+
+			bool in_range = cam_game.target_in_view(sprite_pos, sprite_size);
 			if (!in_range) continue;
 
 			if (sprite->get_layer() != RenderLayer::UI)
@@ -575,7 +564,7 @@ public:
 				sprite->on_render(cam_ui);
 		}
 
-		// 3.渲染UI
+		// 渲染UI
 		for (UI* ui : ui_list)
 			ui->on_render(cam_ui);
 	}
@@ -595,65 +584,85 @@ public:
 	// 退出场景回调（用于某些属性的释放）
 	virtual void on_exit() {}
 
-	// 查找精灵，支持不同类型返回
-	template <typename _CvtTy = Sprite>
-	_CvtTy* find_sprite(const std::string& name)
+	// 查找精灵
+	Sprite* find_sprite(const std::string& name)
 	{
-		if (sprite_registry.find(name) == sprite_registry.end()) // 判断是否存在
+		// 判断是否存在
+		if (sprite_registry.find(name) == sprite_registry.end())
 		{
-			std::u8string _Info = u8"Sprite: " + std::u8string((const char8_t*)name.c_str()) + u8" is not found!";
-			throw custom_error(u8"Scene Tree Error", _Info.c_str());
+			std::u8string _info = u8"Func <find_sprite()>: Sprite: " + std::u8string((const char8_t*)name.c_str()) + u8" is not found!";
+			throw custom_error(u8"Scene Tree Error", _info.c_str());
 		}
+		return sprite_registry[name];
+	}
 
-		auto _Ret = dynamic_cast<_CvtTy*>(sprite_registry[name]);	// 动态的类型转换
-		if (!_Ret)	// 判断是否可转换
+	// 查找精灵组
+	SpriteGroup& find_group(const std::string& name)
+	{
+		if (sprite_group.find(name) == sprite_group.end())
 		{
-			std::u8string _Info = u8"Type <" + std::u8string((const char8_t*)typeid(_CvtTy*).name()) + u8"> is illegal!";
-			throw custom_error(u8"Scene Tree Error", _Info.c_str());
+			std::u8string _info = u8"Func <find_group()>: Sprite Group: " + std::u8string((const char8_t*)name.c_str()) + u8" is not found!";
+			throw custom_error(u8"Scene Tree Error", _info.c_str());
 		}
-
-		return _Ret; // 最后返回
+		return sprite_group[name];
 	}
 
 	// 注册精灵
-	void register_sprite(const std::string& name, Sprite* sprite)
+	void register_sprite(Sprite* sprite, const std::string& group_name = "")
 	{
-		if (sprite_registry.find(name) != sprite_registry.end())
+		if (sprite->get_tag() != "") // 提供了唯一标签
 		{
-			std::u8string _Name = std::u8string((const char8_t*)name.c_str());
-			throw custom_error(u8"Scene Tree Error", u8"Sprite: " + _Name + u8" is already exist!");
+			// 验证唯一性
+			if (sprite_registry.find(sprite->get_tag()) != sprite_registry.end())
+			{
+				std::u8string _info = u8"Func <register_sprite()>: Sprite: " + std::u8string((const char8_t*)sprite->get_tag().c_str()) + u8"is already exist!";
+				throw custom_error(u8"Scene Tree Error", _info.c_str());
+			}
+			sprite_registry[sprite->get_tag()] = sprite;
 		}
-		sprite_registry[name] = sprite;
+		if (group_name != "") // 提供了group_name
+		{
+			sprite->set_group_tag(group_name);
+			sprite_group[group_name].add_sprite(sprite);
+		}
+
 		sprite_list.push_back(sprite);
+		pos_index[sprite] = sprite_list.size() - 1;
 	}
 
 	// 移除精灵
 	void remove_sprite(Sprite* sprite)
 	{
-		sprite_list.erase(std::remove(sprite_list.begin(), sprite_list.end(), sprite), sprite_list.end());
-		std::erase_if(sprite_registry, [&](auto& pair) { return pair.second == sprite; });
+		if (!sprite) return;
+
+		// 未注册，则索引无效
+		if (pos_index.find(sprite) == pos_index.end())
+			throw custom_error(u8"Scene Tree Error", u8"Func <remove_sprite()>: sprite not registered!");
+
+		// 从sprite_list中删除
+		pos_index[sprite_list[sprite_list.size() - 1]] = pos_index[sprite];
+		std::swap(sprite_list[pos_index[sprite]], sprite_list[sprite_list.size() - 1]);
+		sprite_list.pop_back();
+		pos_index.erase(sprite);
+
+		if (sprite->get_tag() != "")		// 从注册表中删除
+			sprite_registry.erase(sprite->get_tag());
+		if (sprite->get_group_tag() != "")	// 从组中删除
+			sprite_group[sprite->get_group_tag()].erase_sprite(sprite);
+
 		delete sprite;
-	}
-
-	// 移除精灵
-	void remove_sprite(const std::string& name)
-	{
-		Sprite* target = sprite_registry[name];
-
-		sprite_list.erase(std::remove(sprite_list.begin(), sprite_list.end(), target), sprite_list.end());
-		sprite_registry.erase(name);
-
-		delete target;
 	}
 
 	// 清空精灵列表
 	void clear_sprite()
 	{
-		for (auto& [name, sprite] : sprite_registry)
+		for (Sprite* sprite : sprite_list)
 			delete sprite;
-
-		sprite_registry.clear();
 		sprite_list.clear();
+
+		pos_index.clear();
+		sprite_registry.clear();
+		sprite_group.clear();
 	}
 
 protected:
@@ -668,7 +677,19 @@ protected:
 	}
 
 private:
+	// 重建位置索引
+	void rebuild_pos_index()
+	{
+		for (int i = 0; i < sprite_list.size(); i++)
+			pos_index[sprite_list[i]] = i;
+	}
+
+private:
 	std::vector<UI*> ui_list;	// UI列表
-	std::vector<Sprite*> sprite_list;	// 精灵列表
-	std::unordered_map<std::string, Sprite*> sprite_registry; // 精灵注册表
+
+	std::vector<Sprite*> sprite_list;				// 精灵列表
+	std::unordered_map<Sprite*, size_t> pos_index;  // 位置索引 (辅助sprite_list增删)
+
+	std::unordered_map<std::string, Sprite*> sprite_registry;  // 精灵注册表
+	std::unordered_map<std::string, SpriteGroup> sprite_group; // 精灵组
 };

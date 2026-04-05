@@ -473,3 +473,64 @@ export namespace maths
 		}
 	}
 };
+
+// 小工具
+export namespace utils
+{
+	// 获取键盘/鼠标事件的UTF-8格式字符串
+	const char* Get_EventName(const SDL_Event& event)
+	{
+		static std::string result = "None";
+
+		if (event.type == SDL_EVENT_KEY_DOWN)
+			result = SDL_GetKeyName(event.key.key);
+		if (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN)
+		{
+			switch (event.button.button)
+			{
+			case SDL_BUTTON_LEFT:	result = "Left Mouse Button";   break;
+			case SDL_BUTTON_MIDDLE: result = "Middle Mouse Button"; break;
+			case SDL_BUTTON_RIGHT:	result = "Right Mouse Button";	break;
+			case SDL_BUTTON_X1:		result = "Side Button 1";		break;
+			case SDL_BUTTON_X2:		result = "Side Button 2";		break;
+			}
+		}
+		if (event.type == SDL_EVENT_MOUSE_WHEEL)
+		{
+			if (event.wheel.y > 0) result = "Mouse Wheel Up";
+			if (event.wheel.y < 0) result = "Mouse Wheel Down";
+		}
+		if (event.type == SDL_EVENT_MOUSE_MOTION)
+			result = "Mouse Motion";
+
+		return result.c_str();
+	}
+
+	// 显示消息框
+	void Show_MessageBox(MsgBoxFlags type, const char* title, const char* message)
+	{
+		// 检测主窗口是否存在
+		if (Main_Window != nullptr)
+			SDL_ShowSimpleMessageBox((SDL_MessageBoxFlags)type, title, message, Main_Window);
+		else
+			SDL_ShowSimpleMessageBox((SDL_MessageBoxFlags)type, title, message, nullptr);
+	}
+
+	// 设置屏幕标准宽高
+	export void Set_NormalWindowSize(int w, int h)
+	{
+		normal_screen_width = w;
+		normal_screen_height = h;
+	}
+
+	// 设置缩放模式
+	export void Set_ScaleMode(ScaleMode mode)
+	{
+		switch (mode)
+		{
+		case ScaleMode::Linear: scale_mode = SDL_SCALEMODE_LINEAR; break;
+		case ScaleMode::Nearest: scale_mode = SDL_SCALEMODE_NEAREST; break;
+		case ScaleMode::Best: scale_mode = SDL_SCALEMODE_PIXELART; break;
+		}
+	}
+}
