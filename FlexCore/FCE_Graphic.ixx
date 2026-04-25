@@ -51,6 +51,7 @@ public:
 	{
 		position = base_position = shake_position = Vector2(0, 0);
 		this->zoom = 1.0f;
+		this->is_shaking = false;
 	}
 
 	// 抖动摄像机
@@ -96,13 +97,10 @@ public:
 	// 世界坐标->窗口坐标
 	Vector2 world_to_screen(const Vector2& world_pos) const
 	{
-		int window_w, window_h;
-		SDL_GetWindowSize(Main_Window, &window_w, &window_h);
-
-		// 窗口坐标 = 视野中心点 + (世界坐标 - 摄像机坐标) * 缩放因子 * 标准缩放比
-		float _Screen_x = (window_w / 2.0f) + (world_pos.x - position.x) * zoom * maths::get_std_zoom_ratio();
-		float _Screen_y = (window_h / 2.0f) + (world_pos.y - position.y) * zoom * maths::get_std_zoom_ratio();
-		return Vector2(_Screen_x, _Screen_y);
+		// 窗口坐标 = 视野中心点 + (世界坐标 - 摄像机坐标) * 缩放因子
+		float _screen_x = (normal_screen_width / 2.0f) + (world_pos.x - position.x) * zoom;
+		float _screen_y = (normal_screen_height / 2.0f) + (world_pos.y - position.y) * zoom;
+		return Vector2(_screen_x, _screen_y);
 
 		/* PS：这里如果是直接画在屏幕上的，则视野中心点就是屏幕尺寸÷2，渲染坐标就要适应缩放比，
 			   但是如果间接画在画布上，再将画布以缩放比适配的形式铺在屏幕上，渲染坐标就不用适配缩放比 */
@@ -111,32 +109,23 @@ public:
 	// 窗口坐标->世界坐标
 	Vector2 screen_to_world(const Vector2& screen_pos) const
 	{
-		int window_w, window_h;
-		SDL_GetWindowSize(Main_Window, &window_w, &window_h);
-
-		// 世界坐标 = (窗口坐标 - 视野中心点) / (缩放因子 * 标准缩放比) + 摄像机坐标
-		float _World_x = (screen_pos.x - window_w / 2.0f) / (zoom * maths::get_std_zoom_ratio()) + position.x;
-		float _World_y = (screen_pos.y - window_h / 2.0f) / (zoom * maths::get_std_zoom_ratio()) + position.y;
-		return Vector2(_World_x, _World_y);
+		// 世界坐标 = (窗口坐标 - 视野中心点) / 缩放因子 + 摄像机坐标
+		float _world_x = (screen_pos.x - normal_screen_width / 2.0f) / zoom + position.x;
+		float _world_y = (screen_pos.y - normal_screen_height / 2.0f) / zoom + position.y;
+		return Vector2(_world_x, _world_y);
 	}
 	
 	// 判断对象是否在视野内(传原始是世界属性就行，内部会自动变换)
 	bool target_in_view(const Vector2& pos, const Size& size) const
 	{
-		int window_w, window_h;
-		SDL_GetWindowSize(Main_Window, &window_w, &window_h);
-
 		// 世界属性变换
-		Vector2 _Screen_pos = this->world_to_screen(pos);
-		Size _Screen_size = {
-			size.w * zoom * maths::get_std_zoom_ratio(),
-			size.h * zoom * maths::get_std_zoom_ratio()
-		};
+		Vector2 _screen_pos = this->world_to_screen(pos);
+		Size _screen_size = { size.w * zoom, size.h * zoom };
 
 		// 检查是否在视野内
-		bool _In_range_x = (_Screen_pos.x >= -_Screen_size.w && _Screen_pos.x <= window_w + _Screen_size.w);
-		bool _In_range_y = (_Screen_pos.y >= -_Screen_size.h && _Screen_pos.y <= window_h + _Screen_size.h);
-		return (_In_range_x && _In_range_y);
+		bool _in_range_x = (_screen_pos.x >= -_screen_size.w && _screen_pos.x <= normal_screen_width + _screen_size.w);
+		bool _in_range_y = (_screen_pos.y >= -_screen_size.h && _screen_pos.y <= normal_screen_height + _screen_size.h);
+		return (_in_range_x && _in_range_y);
 	}
 
 	// 更新摄像机状态
@@ -189,23 +178,23 @@ public:
 		if (!camera.target_in_view({ rect_dst->x, rect_dst->y }, { rect_dst->w, rect_dst->h }))
 			return;
 
-		SDL_FRect _Rect_dst_win = *rect_dst;
+		SDL_FRect _rect_dst_win = *rect_dst;
 
 		// 纹理属性变换
-		_Rect_dst_win.x = camera.world_to_screen(Vector2(rect_dst->x, rect_dst->y)).x;
-		_Rect_dst_win.y = camera.world_to_screen(Vector2(rect_dst->x, rect_dst->y)).y;
-		_Rect_dst_win.w *= camera.get_zoom() * maths::get_std_zoom_ratio();
-		_Rect_dst_win.h *= camera.get_zoom() * maths::get_std_zoom_ratio();
+		_rect_dst_win.x = camera.world_to_screen(Vector2(rect_dst->x, rect_dst->y)).x;
+		_rect_dst_win.y = camera.world_to_screen(Vector2(rect_dst->x, rect_dst->y)).y;
+		_rect_dst_win.w *= camera.get_zoom();
+		_rect_dst_win.h *= camera.get_zoom();
 
 		// 设置旋转中心
-		SDL_FPoint _Rotate_center = { _Rect_dst_win.w * anchor.x, _Rect_dst_win.h * anchor.y };
+		SDL_FPoint _rotate_center = { _rect_dst_win.w * anchor.x, _rect_dst_win.h * anchor.y };
 
 		// 设置渲染中心
-		_Rect_dst_win.x -= anchor.x * _Rect_dst_win.w;
-		_Rect_dst_win.y -= anchor.y * _Rect_dst_win.h;
+		_rect_dst_win.x -= anchor.x * _rect_dst_win.w;
+		_rect_dst_win.y -= anchor.y * _rect_dst_win.h;
 
-		SDL_RenderTextureRotated(Main_Renderer, tex, rect_src, &_Rect_dst_win, angle,
-			&_Rotate_center, (is_flip ? SDL_FLIP_HORIZONTAL : SDL_FLIP_NONE));
+		SDL_RenderTextureRotated(Main_Renderer, tex, rect_src, &_rect_dst_win, angle,
+			&_rotate_center, (is_flip ? SDL_FLIP_HORIZONTAL : SDL_FLIP_NONE));
 	}
 
 	// 渲染线段
@@ -216,11 +205,11 @@ public:
 			return;
 
 		// 线段属性变换
-		Vector2 _Screen_begin = camera.world_to_screen(begin);
-		Vector2 _Screen_end = camera.world_to_screen(end);
+		Vector2 _screen_begin = camera.world_to_screen(begin);
+		Vector2 _screen_end = camera.world_to_screen(end);
 
 		SDL_SetRenderDrawColor(Main_Renderer, color.r, color.g, color.b, color.a);
-		SDL_RenderLine(Main_Renderer, _Screen_begin.x, _Screen_begin.y, _Screen_end.x, _Screen_end.y);
+		SDL_RenderLine(Main_Renderer, _screen_begin.x, _screen_begin.y, _screen_end.x, _screen_end.y);
 	}
 
 	// 渲染矩形（以中心点为基准）
@@ -234,18 +223,18 @@ public:
 		SDL_SetRenderDrawColor(Main_Renderer, color.r, color.g, color.b, color.a);
 
 		// 矩形属性变换
-		Vector2 _Corner_pos = { pos.x - size.w / 2.0f, pos.y - size.h / 2.0f };	// 以中心点为基准，计算左上角位置
-		SDL_FRect _Rect = {
-			camera.world_to_screen(_Corner_pos).x,
-			camera.world_to_screen(_Corner_pos).y,
-			size.w * camera.get_zoom() * maths::get_std_zoom_ratio(),
-			size.h * camera.get_zoom() * maths::get_std_zoom_ratio()
+		Vector2 _corner_pos = { pos.x - size.w / 2.0f, pos.y - size.h / 2.0f };	// 以中心点为基准，计算左上角位置
+		SDL_FRect _rect = {
+			camera.world_to_screen(_corner_pos).x,
+			camera.world_to_screen(_corner_pos).y,
+			size.w * camera.get_zoom(),
+			size.h * camera.get_zoom()
 		};
 
 		if (is_filled)
-			SDL_RenderFillRect(Main_Renderer, &_Rect);
+			SDL_RenderFillRect(Main_Renderer, &_rect);
 		else
-			SDL_RenderRect(Main_Renderer, &_Rect);
+			SDL_RenderRect(Main_Renderer, &_rect);
 	}
 
 	// 渲染矩形（以左上角为基准）
@@ -259,17 +248,17 @@ public:
 		SDL_SetRenderDrawColor(Main_Renderer, color.r, color.g, color.b, color.a);
 
 		// 矩形属性变换
-		SDL_FRect _Rect = {
+		SDL_FRect _rect = {
 			camera.world_to_screen(pos).x,
 			camera.world_to_screen(pos).y,
-			size.w * camera.get_zoom() * maths::get_std_zoom_ratio(),
-			size.h * camera.get_zoom() * maths::get_std_zoom_ratio()
+			size.w * camera.get_zoom(),
+			size.h * camera.get_zoom()
 		};
 
 		if (is_filled)
-			SDL_RenderFillRect(Main_Renderer, &_Rect);
+			SDL_RenderFillRect(Main_Renderer, &_rect);
 		else
-			SDL_RenderRect(Main_Renderer, &_Rect);
+			SDL_RenderRect(Main_Renderer, &_rect);
 	}
 
 	// 渲染圆形
@@ -281,19 +270,19 @@ public:
 			return;
 
 		// 圆形属性变换
-		Vector2 _Screen_center = camera.world_to_screen(center_pos);
-		float _Screen_radius = radius * camera.get_zoom() * maths::get_std_zoom_ratio();
+		Vector2 _screen_center = camera.world_to_screen(center_pos);
+		float _screen_radius = radius * camera.get_zoom();
 
 		if (is_filled)
-			maths::render_filled_circle(Main_Renderer, _Screen_center, _Screen_radius, color);
+			maths::render_filled_circle(Main_Renderer, _screen_center, _screen_radius, color);
 		else
-			maths::render_circle(Main_Renderer, _Screen_center, _Screen_radius, color);
+			maths::render_circle(Main_Renderer, _screen_center, _screen_radius, color);
 	}
 
 	// 渲染文字
 	static void render_text(const Camera& camera, const Vector2& pos, TTF_Text* text, float ptsize, SDL_Color color)
 	{
-		TTF_SetFontSize(TTF_GetTextFont(text), ptsize * camera.get_zoom() * maths::get_std_zoom_ratio());
+		TTF_SetFontSize(TTF_GetTextFont(text), ptsize * camera.get_zoom());
 		TTF_SetTextColor(text, color.r, color.g, color.b, color.a);
 		TTF_DrawRendererText(text, camera.world_to_screen(pos).x, camera.world_to_screen(pos).y);
 	}

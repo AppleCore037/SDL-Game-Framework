@@ -140,11 +140,8 @@ public:
 		this->idx_frame = 0; 
 	}
 
-	// 设置位置
-	void set_position(const Vector2& pos) { position = pos; }
-
-	// 设置方向
-	void set_rotation(float dir) { angle = static_cast<double>(dir); }
+	// 设置矩形
+	void set_rect(const Rect& rect) { this->rect = rect; }
 
 	// 设置循环(默认为false)
 	void set_loop(bool flag) { is_loop = flag; }
@@ -152,32 +149,23 @@ public:
 	// 设置动画间隔(默认0.1f)
 	void set_interval(float dur) { timer.set_wait_time(dur); }
 
-	// 设置反转(默认为false)
-	void set_flip(int flag) { is_flip = flag; }
-
 	// 设置回调函数
 	void set_on_finished(std::function<void()> callback) { on_finished = callback; }
-
-	// 设置锚点(0.0 ~ 1.0)
-	void set_center(const Vector2& anchor) { center = anchor; }
-
-	// 设置缩放
-	void set_scale(const Vector2& scale) { this->scale = scale; }
 
 	// 从长图中添加序列帧
 	void add_frame(SDL_Texture* texture, int num_h)
 	{
-		float _Width, _Height;
-		SDL_GetTextureSize(texture, &_Width, &_Height);	// 获取序列帧宽高
+		float _width, _height;
+		SDL_GetTextureSize(texture, &_width, &_height);	// 获取序列帧宽高
 
-		float _Width_frame = _Width / num_h;	// 获取单张序列帧宽高
+		float _width_frame = _width / num_h;	// 获取单张序列帧宽高
 		for (int i = 0; i < num_h; i++)
 		{
-			SDL_FRect _Rect_src{};
-			_Rect_src.x = i * _Width_frame, _Rect_src.y = 0;
-			_Rect_src.w = _Width_frame, _Rect_src.h = _Height;
+			SDL_FRect _rect_src{};
+			_rect_src.x = i * _width_frame, _rect_src.y = 0;
+			_rect_src.w = _width_frame, _rect_src.h = _height;
 
-			frame_list.emplace_back(texture, _Rect_src); // 将序列帧加入列表
+			frame_list.emplace_back(texture, _rect_src); // 将序列帧加入列表
 		}
 	}
 
@@ -186,13 +174,13 @@ public:
 	{
 		for (int i = 0; i < atlas->get_size(); i++)
 		{
-			SDL_Texture* _Texture = atlas->get_texture(i);
+			SDL_Texture* _texture = atlas->get_texture(i);
 
-			float _Width, _Height;
-			SDL_GetTextureSize(_Texture, &_Width, &_Height);
-			SDL_FRect _Rect_src = { 0, 0, _Width, _Height };
+			float _width, _height;
+			SDL_GetTextureSize(_texture, &_width, &_height);
+			SDL_FRect _rect_src = { 0, 0, _width, _height };
 
-			frame_list.emplace_back(_Texture, _Rect_src);
+			frame_list.emplace_back(_texture, _rect_src);
 		}
 	}
 
@@ -202,9 +190,9 @@ public:
 	// 渲染
 	void on_render(const Camera& camera)
 	{
-		const Frame& _Frame = frame_list[idx_frame];
-		SDL_FRect _Rect_dst = { position.x, position.y, _Frame.rect_src.w * scale.x, _Frame.rect_src.h * scale.y };
-		Renderer::render_texture(camera, _Frame.texture, &_Frame.rect_src, &_Rect_dst, angle, center, is_flip);
+		const Frame& _frame = frame_list[idx_frame];
+		Renderer::render_texture(camera, _frame.texture, &_frame.rect_src, &rect.get_SDLRect(), 
+			rect.direction, rect.anchor, rect.is_flip);
 	}
 
 private:
@@ -222,12 +210,7 @@ private:
 	};
 
 private:
-	Vector2 position;				// 位置
-	double angle = 0.0;				// 角度
-	Vector2 center = { 0, 0 };		// 渲染锚点
-	bool is_flip = false;			// 是否反转
-	Vector2 scale = { 1.0f, 1.0f };	// 缩放
-
+	Rect rect;							// 变换矩形
 	Timer timer;						// 帧计时器
 	bool is_loop = true;				// 是否循环
 	size_t idx_frame = 0;				// 当前帧索引
@@ -439,27 +422,17 @@ public:
 	virtual void on_input(const SDL_Event& event) = 0;	// 输入
 	virtual void reset_props() = 0;						// 重置属性
 	
-	SDL_FRect& get_rect() { return this->rect; }
-	const Vector2& get_scale() const { return this->scale; }
-	const Vector2& get_anchor() const { return this->anchor; }
-	bool get_flip() const { return this->is_flip; }
+	Rect& get_rect() { return this->rect; }
 	RenderLayer get_layer() const { return this->render_layer; }
 	const std::string& get_tag() const { return this->tag; }
 	const std::string& get_group_tag() const { return group_tag; }
 
-	void set_flip(bool flag) { this->is_flip = flag; }
 	void set_layer(RenderLayer layer) { this->render_layer = layer; }
-	void set_anchor(const Vector2& center) { this->anchor = center; }
-	void set_scale(const Vector2& val) { this->scale = val; }
 	void set_tag(const std::string& name) { this->tag = name; }
 	void set_group_tag(const std::string& name) { this->group_tag = name; }
 
 protected:
-	SDL_FRect rect = { 0, 0, 0, 0 }; // 绘制矩形
-	Vector2 anchor = { 0, 0 };		 // 锚点
-	Vector2 scale = { 0, 0 };		 // 缩放
-
-	bool is_flip = false;			// 是否反转
+	Rect rect;	// 变换矩形
 	RenderLayer render_layer = RenderLayer::None;	// 渲染层
 	std::string tag = "";		 // 标签
 
@@ -468,9 +441,15 @@ private:
 };
 
 // 精灵组
+class Scene;
 export class SpriteGroup
 {
+	friend class Scene;
 public:
+	// 返回组
+	const std::vector<Sprite*>& range() { return sprite_list; }
+
+private:
 	SpriteGroup() = default;
 	~SpriteGroup() = default;
 
@@ -490,12 +469,9 @@ public:
 		pos_index.erase(sprite);
 	}
 
-	// 返回组
-	std::vector<Sprite*>& range() { return sprite_list; }
-
 private:
-	std::vector<Sprite*> sprite_list;
-	std::unordered_map<Sprite*, size_t> pos_index;
+	std::vector<Sprite*> sprite_list;	// 精灵列表
+	std::unordered_map<Sprite*, size_t> pos_index;	// 位置索引，辅助增删
 };
 
 // 场景
@@ -510,8 +486,7 @@ public:
 		this->clear_sprite();
 
 		// 释放UI
-		for (UI* ui_element : ui_list)
-			delete ui_element;
+		for (UI* ui : ui_list) delete ui;
 		ui_list.clear();
 	}
 
@@ -533,7 +508,7 @@ public:
 				if (a->get_layer() != b->get_layer())
 					return a->get_layer() < b->get_layer();
 				else
-					return a->get_rect().y < b->get_rect().y;
+					return a->get_rect().position.y < b->get_rect().position.y;
 			});
 		this->rebuild_pos_index();
 
@@ -552,16 +527,11 @@ public:
 		// 渲染精灵
 		for (Sprite* sprite : sprite_list)
 		{
-			const Vector2& sprite_pos = { sprite->get_rect().x, sprite->get_rect().y };
-			const Size& sprite_size = { sprite->get_rect().w, sprite->get_rect().h };
-
-			bool in_range = cam_game.target_in_view(sprite_pos, sprite_size);
-			if (!in_range) continue;
-
-			if (sprite->get_layer() != RenderLayer::UI)
-				sprite->on_render(cam_game);
-			else
+			const Rect& _rect = sprite->get_rect();
+			if (sprite->get_layer() == RenderLayer::UI)
 				sprite->on_render(cam_ui);
+			else if (cam_game.target_in_view(_rect.position, _rect.size))
+				sprite->on_render(cam_game);
 		}
 
 		// 渲染UI
@@ -597,7 +567,7 @@ public:
 	}
 
 	// 查找精灵组
-	SpriteGroup& find_group(const std::string& name)
+	SpriteGroup* find_group(const std::string& name)
 	{
 		if (sprite_group.find(name) == sprite_group.end())
 		{
@@ -623,7 +593,11 @@ public:
 		if (group_name != "") // 提供了group_name
 		{
 			sprite->set_group_tag(group_name);
-			sprite_group[group_name].add_sprite(sprite);
+
+			// 将精灵添加到组里，并校验组的存在
+			auto& _group_ptr = sprite_group[group_name];
+			if (!_group_ptr) _group_ptr = new SpriteGroup();
+			_group_ptr->add_sprite(sprite);
 		}
 
 		sprite_list.push_back(sprite);
@@ -648,7 +622,7 @@ public:
 		if (sprite->get_tag() != "")		// 从注册表中删除
 			sprite_registry.erase(sprite->get_tag());
 		if (sprite->get_group_tag() != "")	// 从组中删除
-			sprite_group[sprite->get_group_tag()].erase_sprite(sprite);
+			sprite_group[sprite->get_group_tag()]->erase_sprite(sprite);
 
 		delete sprite;
 	}
@@ -662,6 +636,13 @@ public:
 
 		pos_index.clear();
 		sprite_registry.clear();
+
+		// 如果组不为空，删除组
+		if (!sprite_group.empty())
+		{
+			for (auto& [i, group] : sprite_group)
+				delete group;
+		}
 		sprite_group.clear();
 	}
 
@@ -691,5 +672,5 @@ private:
 	std::unordered_map<Sprite*, size_t> pos_index;  // 位置索引 (辅助sprite_list增删)
 
 	std::unordered_map<std::string, Sprite*> sprite_registry;  // 精灵注册表
-	std::unordered_map<std::string, SpriteGroup> sprite_group; // 精灵组
+	std::unordered_map<std::string, SpriteGroup*> sprite_group; // 精灵组
 };
