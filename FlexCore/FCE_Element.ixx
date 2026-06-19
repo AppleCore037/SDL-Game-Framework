@@ -5,6 +5,7 @@
 #include <unordered_map>
 #include <vector>
 #include <cmath>
+#include <format>
 
 #include <SDL3/SDL.h>
 
@@ -43,11 +44,12 @@ export namespace fce
 		// 面向鼠标指针
 		void point_to_mouse(const Camera& camera)
 		{
-			Vector2 mouse_pos;
-			SDL_GetMouseState(&mouse_pos.x, &mouse_pos.y);
+			Vector2 _window_mouse_pos, _logical_mouse_pos;
+			SDL_GetMouseState(&_window_mouse_pos.x, &_window_mouse_pos.y);	// 获取鼠标物理窗口坐标
+			SDL_RenderCoordinatesFromWindow(Main_Renderer, _window_mouse_pos.x, _window_mouse_pos.y, &_logical_mouse_pos.x, &_logical_mouse_pos.y); // 获取鼠标逻辑窗口坐标
 
-			mouse_pos = camera.screen_to_world(mouse_pos);
-			Vector2 dist = mouse_pos - rect.position;
+			Vector2 _world_mouse_pos = camera.screen_to_world(_logical_mouse_pos); // 逻辑窗口坐标转世界坐标
+			Vector2 dist = _world_mouse_pos - rect.position;
 
 			rect.direction = maths::rad_to_deg(std::atan2f(dist.y, dist.x));
 		}
@@ -89,7 +91,7 @@ export namespace fce
 		}
 
 		// 删除精灵
-		void erase_sprite(Sprite* sprite)
+		void remove_sprite(Sprite* sprite)
 		{
 			pos_index[sprite_list[sprite_list.size() - 1]] = pos_index[sprite];
 			std::swap(sprite_list[pos_index[sprite]], sprite_list[sprite_list.size() - 1]);
@@ -117,11 +119,9 @@ export namespace fce
 
 		void on_update(float delta) override
 		{
-			Vector2 move_dir = { (right - left) * 1.0f, (down - up) * 1.0f };
+			this->move_dir = { (right - left) * 1.0f, (down - up) * 1.0f };
 			this->velocity = move_dir.normalize() * speed;
-
 			this->rect.position += velocity * delta;
-			this->hitbox->set_position(rect.position);
 		}
 
 		void on_input(const SDL_Event& event) override
@@ -164,8 +164,9 @@ export namespace fce
 
 	protected:
 		Vector2 velocity;				// 速度
+		Vector2 move_dir = { 0, 0 };	// 方向向量
 		float speed = 200.0f;			// 移动速度大小
-		CollisionBox* hitbox = nullptr; // 碰撞箱
+
 		bool enable_arrow_ctrl = true;  // 开启方向键控制移动
 		bool enable_wasd_ctrl = true;	// 开启WASD控制移动
 
@@ -256,16 +257,26 @@ export namespace fce
 		// 退出场景回调（用于某些属性的释放）
 		virtual void on_exit() {}
 
-		// 查找精灵
-		Sprite* find_sprite(const std::string& name)
+		// 查找精灵(支持指定类型查找)
+		template <typename cvt_ty = Sprite>
+		cvt_ty* find_sprite(const std::string& name)
 		{
 			// 判断是否存在
 			if (sprite_registry.find(name) == sprite_registry.end())
 			{
-				std::string _info = "Func <find_sprite()>: Sprite: " + name + " is not found!";
+				std::string _info = "[find_sprite()]: Sprite: \"" + name + "\" is not found!";
 				throw custom_error("Scene Tree Error", _info.c_str());
 			}
-			return sprite_registry[name];
+			
+			// 判断转换类型是否合法
+			cvt_ty* _ret = dynamic_cast<cvt_ty*>(sprite_registry[name]);
+			if (_ret == nullptr)
+			{
+				std::string _info = std::format("<{}> --> <{}>", typeid(Sprite*).name(), typeid(cvt_ty*).name());
+				throw custom_error("Scene Tree Error", "[find_sprite()]: Illegal polymorphic type conversion!\n" + _info);
+			}
+
+			return _ret;
 		}
 
 		// 查找精灵组
@@ -273,21 +284,28 @@ export namespace fce
 		{
 			if (sprite_group.find(name) == sprite_group.end())
 			{
-				std::string _info = "Func <find_group()>: Sprite Group: " + name + " is not found!";
+				std::string _info = "[find_group()]: Sprite Group: \"" + name + "\" is not found!";
 				throw custom_error("Scene Tree Error", _info.c_str());
 			}
 			return sprite_group[name];
 		}
 
 		// 注册精灵
-		void register_sprite(Sprite* sprite, const std::string& group_name = "")
+		void add_sprite(Sprite* sprite, const std::string& group_name = "")
 		{
+			// 既没有组名也没有标签的精灵是非法的
+			if (sprite->get_tag() == "" && group_name == "")
+			{
+				std::string _info = "[add_sprite()]: Sprites that provide neither a unique tag nor a group name are illegal";
+				throw custom_error("Scene Tree Error", _info.c_str());
+			}
+
 			if (sprite->get_tag() != "") // 提供了唯一标签
 			{
 				// 验证唯一性
 				if (sprite_registry.find(sprite->get_tag()) != sprite_registry.end())
 				{
-					std::string _info = "Func <register_sprite()>: Sprite: " + sprite->get_tag() + "is already exist!";
+					std::string _info = "[add_sprite()]: Sprite: " + sprite->get_tag() + "is already exist!";
 					throw custom_error("Scene Tree Error", _info.c_str());
 				}
 				sprite_registry[sprite->get_tag()] = sprite;
@@ -297,7 +315,7 @@ export namespace fce
 				sprite->set_group_tag(group_name);
 
 				// 将精灵添加到组里，并校验组的存在
-				auto& _group_ptr = sprite_group[group_name];
+				SpriteGroup* _group_ptr = sprite_group[group_name];
 				if (!_group_ptr) _group_ptr = new SpriteGroup();
 				_group_ptr->add_sprite(sprite);
 			}
@@ -313,7 +331,7 @@ export namespace fce
 
 			// 未注册，则索引无效
 			if (pos_index.find(sprite) == pos_index.end())
-				throw custom_error("Scene Tree Error", "Func <remove_sprite()>: sprite not registered!");
+				throw custom_error("Scene Tree Error", "[remove_sprite()]: sprite not registered!");
 
 			// 从sprite_list中删除
 			pos_index[sprite_list[sprite_list.size() - 1]] = pos_index[sprite];
@@ -324,7 +342,7 @@ export namespace fce
 			if (sprite->get_tag() != "")		// 从注册表中删除
 				sprite_registry.erase(sprite->get_tag());
 			if (sprite->get_group_tag() != "")	// 从组中删除
-				sprite_group[sprite->get_group_tag()]->erase_sprite(sprite);
+				sprite_group[sprite->get_group_tag()]->remove_sprite(sprite);
 
 			delete sprite;
 		}
@@ -332,8 +350,7 @@ export namespace fce
 		// 清空精灵列表
 		void clear_sprite()
 		{
-			for (Sprite* sprite : sprite_list)
-				delete sprite;
+			for (Sprite* sprite : sprite_list) delete sprite;
 			sprite_list.clear();
 
 			pos_index.clear();
@@ -373,7 +390,7 @@ export namespace fce
 		std::vector<Sprite*> sprite_list;				// 精灵列表
 		std::unordered_map<Sprite*, size_t> pos_index;  // 位置索引 (辅助sprite_list增删)
 
-		std::unordered_map<std::string, Sprite*> sprite_registry;  // 精灵注册表
+		std::unordered_map<std::string, Sprite*> sprite_registry;   // 精灵注册表
 		std::unordered_map<std::string, SpriteGroup*> sprite_group; // 精灵组
 	};
 }

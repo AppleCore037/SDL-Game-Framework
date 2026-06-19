@@ -8,13 +8,8 @@
 
 export module FlexCore:FCE_BaseSetup;
 
-export int normal_screen_width = 1280;		// 标准屏幕宽度
-export int normal_screen_height = 720;		// 标准屏幕高度
-export SDL_ScaleMode scale_mode = SDL_SCALEMODE_NEAREST;	// 缩放模式(默认是Nearest)
-
 export constexpr float PI = 3.14159265f;	// 圆周率
-export constexpr SDL_InitFlags SDL_INIT_EVERYTHING = (SDL_INIT_AUDIO | SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_JOYSTICK | SDL_INIT_HAPTIC | SDL_INIT_GAMEPAD | SDL_INIT_SENSOR);
-export constexpr MIX_InitFlags MIX_INIT_EVERYTHING = (MIX_INIT_MP3 | MIX_INIT_FLAC | MIX_INIT_MID | MIX_INIT_MOD | MIX_INIT_OGG | MIX_INIT_OPUS | MIX_INIT_WAVPACK);
+export SDL_ScaleMode scale_mode = SDL_SCALEMODE_NEAREST;	// 缩放模式(默认是Nearest)
 
 export namespace fce
 {
@@ -80,6 +75,7 @@ export namespace fce
 		GameMap = 1 << 2,		// 游戏地图层
 		GameObject = 1 << 3,	// 游戏元素层
 		Attack = 1 << 4,		// 攻击层
+		Vehicle = 1 << 5		// 载具层
 	};
 
 	// 缩放模式

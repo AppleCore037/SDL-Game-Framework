@@ -1,5 +1,6 @@
 module;
 
+#include <array>
 #include <functional>
 #include <string>
 #include <unordered_map>
@@ -81,13 +82,19 @@ export namespace fce
 		void set_layer_dst(CollisionLayer layer) { this->layer_dst = layer; }
 
 		// 设置碰撞回调函数
-		void set_on_collide(std::function<void(CollisionLayer)> callback) { this->on_collide = callback; }
+		void set_on_collide(std::function<void(const CollisionInfo&)> func) { this->on_collide = func; }
+
+		// 设置发送属性回调函数
+		void set_send_props(std::function<void(CollisionInfo&)> func) { this->send_props = func; }
+
+		// 设置碰撞箱坐标
+		void set_position(const Vector2& pos) { this->position = pos; }
 
 		// 设置碰撞箱大小
 		void set_size(const Size& size) { this->size = size; }
 
-		// 设置碰撞箱坐标
-		void set_position(const Vector2& pos) { this->position = pos; }
+		// 设置碰撞箱方向
+		void set_direction(float dir) { this->direction = dir; }
 
 		// 获取碰撞箱大小
 		const Size& get_size() const { return this->size; }
@@ -95,17 +102,37 @@ export namespace fce
 		// 获取碰撞箱坐标
 		const Vector2& get_position() const { return this->position; }
 
+		// 获取碰撞箱方向
+		const float get_direction() const { return this->direction; }
+
 	private:
 		Size size = { 0, 0 };	// 碰撞箱大小
 		Vector2 position;		// 碰撞箱坐标
+		float direction;		// 碰撞箱方向
+
 		bool enabled = true;	// 是否启用碰撞检测
-		std::function<void(CollisionLayer)> on_collide;		// 碰撞回调函数
 		CollisionLayer layer_src = CollisionLayer::None;	// 自身碰撞层
 		CollisionLayer layer_dst = CollisionLayer::None;	// 目标碰撞层
+
+		std::function<void(const CollisionInfo&)> on_collide;	// 碰撞回调函数
+		std::function<void(CollisionInfo&)> send_props;			// 发送属性信息
+		std::array<Vector2, 4> corners;		// 矩形碰撞箱四个顶点
 
 	private:
 		CollisionBox() = default;
 		~CollisionBox() = default;
+
+		// 计算碰撞箱的四个顶点坐标
+		void set_corners()
+		{
+			float half_w = size.w / 2.0f, half_h = size.h / 2.0f;
+			float radian = maths::deg_to_rad(direction);
+
+			this->corners[0] = position + Vector2(-half_w, -half_h).rotate(radian);
+			this->corners[1] = position + Vector2(half_w, -half_h).rotate(radian);
+			this->corners[2] = position + Vector2(half_w, half_h).rotate(radian);
+			this->corners[3] = position + Vector2(-half_w, half_h).rotate(radian);
+		}
 	};
 
 	// 动画
@@ -236,12 +263,12 @@ export namespace fce
 			current_animation = nullptr;
 		}
 
-		// 注册动画
-		void register_animation(const std::string& name, Animation* anim)
+		// 添加动画
+		void add_animation(const std::string& name, Animation* anim)
 		{
 			if (animation_pool.find(name) != animation_pool.end())	// 检查动画已存在
 			{
-				std::string _info = "Func <register_animation()>: Animation \"" + name + "\"is already exist!";
+				std::string _info = "[add_animation()]: Animation \"" + name + "\"is already exist!";
 				throw custom_error("Animation Player Error", _info.c_str());
 			}
 			animation_pool[name] = anim;
@@ -252,7 +279,7 @@ export namespace fce
 		{
 			if (animation_pool.find(name) == animation_pool.end())
 			{
-				std::string _info = "Func <switch_to()>: Animation \"" + name + "\" is not exist!";
+				std::string _info = "[switch_to()]: Animation \"" + name + "\" is not exist!";
 				throw custom_error("Animation Player Error", _info.c_str());
 			}
 			this->current_animation = animation_pool[name];
@@ -263,7 +290,7 @@ export namespace fce
 		{
 			if (animation_pool.find(name) == animation_pool.end())
 			{
-				std::string _info = "Func <set_animation()>: Animation \"" + name + "\" is not exist!";
+				std::string _info = "[set_animation()]: Animation \"" + name + "\" is not exist!";
 				throw custom_error("Animation Player Error", _info.c_str());
 			}
 
@@ -275,7 +302,7 @@ export namespace fce
 		Animation* get_current()
 		{
 			if (!current_animation)
-				throw custom_error("Animation Player Error", "Func <get_current()>: \"current_animation\" is a nullptr!");
+				throw custom_error("Animation Player Error", "[get_current()]: \"current_animation\" is a nullptr!");
 			return current_animation;
 		}
 
@@ -283,7 +310,7 @@ export namespace fce
 		void on_update(float delta)
 		{
 			if (!current_animation)
-				throw custom_error("Animation Player Error", "Func <on_update()>: \"current_animation\" is a nullptr!");
+				throw custom_error("Animation Player Error", "[on_update()]: \"current_animation\" is a nullptr!");
 			current_animation->on_update(delta);
 		}
 
@@ -291,7 +318,7 @@ export namespace fce
 		void on_render(const Camera& camera)
 		{
 			if (!current_animation)
-				throw custom_error("Animation Player Error", "Func <on_render()>: \"current_animation\" is a nullptr!");
+				throw custom_error("Animation Player Error", "[on_render()]: \"current_animation\" is a nullptr!");
 			current_animation->on_render(camera);
 		}
 
@@ -312,6 +339,18 @@ export namespace fce
 	private:
 		std::unordered_map<std::string, Animation*> animation_pool;		// 动画池
 		Animation* current_animation = nullptr;							// 当前动画
+	};
+
+	// 状态节点
+	class StateNode
+	{
+	public:
+		StateNode() = default;
+		virtual ~StateNode() = default;
+
+		virtual void on_enter() {}				// 进入状态
+		virtual void on_update(float delta) {}	// 更新状态
+		virtual void on_exit() {}				// 退出状态
 	};
 
 	// 状态机
@@ -338,7 +377,7 @@ export namespace fce
 		{
 			if (!current_state)
 			{
-				std::string _info = "Func <on_update()>: \"current_state\" is nullptr! Please check the initialization";
+				std::string _info = "[on_update()]: \"current_state\" is nullptr! Please check the initialization";
 				throw custom_error("State Machine Error", _info.c_str());
 			}
 
@@ -357,7 +396,7 @@ export namespace fce
 			// 如果未找到目标状态
 			if (state_pool.find(name) == state_pool.end())
 			{
-				std::string _info = "Func <set_entry()>: State node \"" + name + "\" is not found!";
+				std::string _info = "[set_entry()]: State node \"" + name + "\" is not found!";
 				throw custom_error("State Machine Error", _info.c_str());
 			}
 			current_state = state_pool[name];
@@ -369,7 +408,7 @@ export namespace fce
 			// 如果未找到目标状态
 			if (state_pool.find(name) == state_pool.end())
 			{
-				std::string _info = "Func <switch_to()>: State node \"" + name + "\" is not found!";
+				std::string _info = "[switch_to()]: State node \"" + name + "\" is not found!";
 				throw custom_error("State Machine Error", _info.c_str());
 			}
 
@@ -378,12 +417,12 @@ export namespace fce
 			current_state->on_enter();	// 进入
 		}
 
-		// 注册状态节点
-		void register_state(const std::string& name, StateNode* state)
+		// 添加状态节点
+		void add_state_node(const std::string& name, StateNode* state)
 		{
 			if (state_pool.find(name) != state_pool.end())	// 如果该状态已存在
 			{
-				std::string _info = "Func <register_state()>: State node \"" + name + "\" is already exist!";
+				std::string _info = "[add_state_node()]: State node \"" + name + "\" is already exist!";
 				throw custom_error("State Machine Error", _info.c_str());
 			}
 			state_pool[name] = state;		// 注册状态节点

@@ -410,10 +410,6 @@ export namespace fce
 		// 插值函数
 		float lerp(float current, float target, float t) noexcept { return current + (target - current) * t; }
 
-		// 将数值钳定在[min, max]范围内
-		template <typename Ty>
-		Ty clamp(Ty val, Ty max, Ty min) { return std::max(min, std::min(val, max)); }
-
 		// 计算两点距离
 		float distance_to(const Vector2& pos_1, const Vector2& pos_2)
 		{
@@ -431,20 +427,6 @@ export namespace fce
 			float _dt = Clock::get_global_time();
 			// 摆动区间 = (max-min)÷2 * sin(dt*k) + (max+min)÷2
 			return (max - min) / 2.0f * std::sin(_dt * strength) + (max + min) / 2.0f;
-		}
-
-		// 计算屏幕标准缩放比
-		float get_std_zoom_ratio()
-		{
-			int _screen_width, _screen_height;
-			SDL_GetWindowSize(Main_Window, &_screen_width, &_screen_height);
-
-			// 缩放比 = 当前屏幕尺寸 ÷ 标准屏幕尺寸(开发时的屏幕尺寸)
-			float _ratio_w = static_cast<float>(_screen_width) / normal_screen_width;
-			float _ratio_h = static_cast<float>(_screen_height) / normal_screen_height;
-
-			// 计算宽高缩放比，取较小的一个作为标准缩放比，以保持宽高比不变
-			return std::min(_ratio_w, _ratio_h);
 		}
 
 		// 绘制空心圆形
@@ -538,15 +520,8 @@ export namespace fce
 				SDL_ShowSimpleMessageBox((SDL_MessageBoxFlags)type, title, message, nullptr);
 		}
 
-		// 设置屏幕标准宽高
-		export void Set_NormalWindowSize(int w, int h)
-		{
-			normal_screen_width = w;
-			normal_screen_height = h;
-		}
-
 		// 设置缩放模式
-		export void Set_ScaleMode(ScaleMode mode)
+		void Set_ScaleMode(ScaleMode mode)
 		{
 			switch (mode)
 			{

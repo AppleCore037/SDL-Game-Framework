@@ -1,11 +1,17 @@
 module;
 
+#include <any>
+#include <cmath>
 #include <stdexcept>
 #include <string>
+#include <typeindex>
+#include <unordered_map>
 #include <vector>
+#include <format>
 
 #include <SDL3/SDL.h>
 #include <SDL3_image/SDL_image.h>
+#include <SDL3_ttf/SDL_ttf.h>
 
 export module FlexCore:FCE_BaseType;
 
@@ -42,6 +48,8 @@ export namespace fce
 
 		Vector2 operator-(const Vector2& vct2) const { return Vector2(x - vct2.x, y - vct2.y); }
 
+		Vector2 operator-() const { return Vector2(-x, -y); }
+
 		Vector2 operator*(float val) { return Vector2(x * val, y * val); }
 
 		Vector2 operator/(float val) { return Vector2(x / val, y / val); }
@@ -60,7 +68,17 @@ export namespace fce
 		float length() const { return sqrtf(x * x + y * y); }
 
 		// 检测是否趋近与目标向量
-		bool approx(const Vector2& target) const { return (*this - target).length() <= 0.0001f; }
+		bool approx(const Vector2& target) const { return (*this - target).length() <= 0.001f; }
+
+		// 将向量旋转指定弧度
+		Vector2 rotate(float angle)
+		{
+			float _cos_a = std::cosf(angle), _sin_a = std::sinf(angle);
+			return Vector2(x * _cos_a - y * _sin_a, x * _sin_a + y * _cos_a);
+		}
+
+		// 获取法向量
+		Vector2 get_normal() { return Vector2(-y, x).normalize(); }
 
 		// 将向量标准化为单位向量
 		Vector2 normalize() const
@@ -118,7 +136,7 @@ export namespace fce
 
 				if (_texture == nullptr)	// 检查纹理加载状态
 				{
-					std::string _info = "Func <load_from_file()>: Cannot load texture from \"" + std::string(_path_file) + "\" !";
+					std::string _info = "[load_from_file()]: Cannot load texture from \"" + std::string(_path_file) + "\" !";
 					throw std::runtime_error(_info.c_str());
 				}
 
@@ -150,15 +168,91 @@ export namespace fce
 		std::vector<SDL_Texture*> tex_list;		// 纹理集
 	};
 
-	// 状态节点
-	class StateNode
+	// 文本
+	class Text
 	{
 	public:
-		StateNode() = default;
-		virtual ~StateNode() = default;
+		Text()
+		{
+			if (!global_font) throw std::runtime_error("[Text Constructor]: Text default font not set!");
+			this->text = TTF_CreateText(Main_TextEngine, global_font, nullptr, NULL);
+		}
 
-		virtual void on_enter() {}				// 进入状态
-		virtual void on_update(float delta) {}	// 更新状态
-		virtual void on_exit() {}				// 退出状态
+		Text(const std::string& info)
+		{
+			if (!global_font) throw std::runtime_error("[Text Constructor]: Text default font not set!");
+			this->text = TTF_CreateText(Main_TextEngine, global_font, info.c_str(), NULL);
+		}
+
+		~Text() { TTF_DestroyText(text); }
+
+		// 设置全局字体
+		static void set_global_font(TTF_Font* font) { global_font = font; }
+
+		// 设置私有字体
+		void set_self_font(TTF_Font* font)
+		{
+			if (!font) TTF_SetTextFont(text, global_font);
+			else TTF_SetTextFont(text, font);
+		}
+
+		// 设置文本内容
+		void set_string(const std::string& info) { TTF_SetTextString(text, info.c_str(), NULL); }
+
+		// 获取SDL格式的文本
+		TTF_Text* get_SDLText() { return this->text; }
+
+	private:
+		TTF_Text* text = nullptr;
+		static TTF_Font* global_font;
+	};
+	TTF_Font* Text::global_font = nullptr;
+
+	// 碰撞信息上下文
+	class CollisionInfo
+	{
+		using map_t = std::unordered_map<std::string, std::any>;
+	public:
+		Vector2 normal;				// 碰撞法线(指向自身)
+		float depth;				// 碰撞深度
+		CollisionLayer other_layer;	// 对方碰撞层
+
+	public:
+		CollisionInfo() = default;
+		~CollisionInfo() = default;
+
+		template <typename T>
+		void pack(const std::string& name, const T& value)
+		{
+			map_t& map = bags[std::type_index(typeid(T))];
+			map[name] = value;
+		}
+
+		template <typename T>
+		T get(const std::string& name) const
+		{
+			auto it = bags.find(std::type_index(typeid(T)));
+			if (it != bags.end())
+			{
+				auto val_it = it->second.find(name);
+				if (val_it != it->second.end()) return std::any_cast<T>(val_it->second);
+			}
+
+			std::string _info = std::format("[CollisionInfo::get()]: Cannot get value!\ntype: {}\nname: {}", typeid(T).name(), name);
+			throw std::runtime_error(_info.c_str());
+		}
+
+		template <typename T>
+		bool has(const std::string& name) const
+		{
+			auto it = bags.find(std::type_index(typeid(T)));
+			if (it != bags.end())
+				return (it->second.find(name) != it->second.end());
+			else
+				return false;
+		}
+
+	private:
+		std::unordered_map<std::type_index, map_t> bags;
 	};
 }

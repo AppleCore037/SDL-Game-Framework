@@ -12,6 +12,17 @@ import :FCE_BaseSetup;
 import :FCE_BaseType;
 import :FCE_Utils;
 
+/*
+* 游戏渲染有三个次元：
+*	1.屏幕空间	  物理像素(0,0) = 窗口左上角(也就是物理坐标)  	鼠标事件、窗口大小都在这个次元
+*	2.渲染空间	  逻辑像素(0,0) = 画布左上角(也就是逻辑坐标)		精灵位置、UI布局、摄像机视口都在这个次元
+*	3.世界空间	  游戏单位自定义（米/格，也就是世界坐标）			玩家位置、碰撞体、AI、物理逻辑都在这个次元
+* 
+* 屏幕空间就是你的游戏窗口，当需要访问鼠标时介入这一空间，通过物理坐标->逻辑坐标->世界坐标这样链式转换
+* 渲染空间就是Renderer的逻辑渲染大小（也就是开发时的默认大小，渲染器以这个为基准绘制整个游戏世界，并在屏幕空间自动缩放居中）
+* 世界空间就是真正的游戏世界，角色的坐标等属性在这里更新，必要时通过Camera与渲染空间坐标相互转化
+*/
+
 export namespace fce
 {
 	// 摄像机
@@ -80,15 +91,15 @@ export namespace fce
 			}
 			else if (style & FollowStyle::Smooth)	// 平滑跟随
 			{
-				float _Delta_smooth = smooth_factor * Clock::get_DeltaTime() * 60.0f;	// 保持系数稳定
+				float _delta_smooth = 1 - std::powf(1 - smooth_factor, Clock::get_DeltaTime());	// 保持系数稳定
 				if (style & FollowStyle::Only_X)
-					base_position.x = maths::lerp(base_position.x, target.x, _Delta_smooth);
+					base_position.x = maths::lerp(base_position.x, target.x, _delta_smooth);
 				else if (style & FollowStyle::Only_Y)
-					base_position.y = maths::lerp(base_position.y, target.y, _Delta_smooth);
+					base_position.y = maths::lerp(base_position.y, target.y, _delta_smooth);
 				else
 				{
-					base_position.x = maths::lerp(base_position.x, target.x, _Delta_smooth);
-					base_position.y = maths::lerp(base_position.y, target.y, _Delta_smooth);
+					base_position.x = maths::lerp(base_position.x, target.x, _delta_smooth);
+					base_position.y = maths::lerp(base_position.y, target.y, _delta_smooth);
 				}
 			}
 		}
@@ -99,34 +110,42 @@ export namespace fce
 		// 世界坐标->窗口坐标
 		Vector2 world_to_screen(const Vector2& world_pos) const
 		{
-			// 窗口坐标 = 视野中心点 + (世界坐标 - 摄像机坐标) * 缩放因子
-			float _screen_x = (normal_screen_width / 2.0f) + (world_pos.x - position.x) * zoom;
-			float _screen_y = (normal_screen_height / 2.0f) + (world_pos.y - position.y) * zoom;
+			int log_width, log_height;	// 逻辑窗口尺寸
+			SDL_GetRenderLogicalPresentation(Main_Renderer, &log_width, &log_height, nullptr);
+
+			// 窗口坐标 = 逻辑视野中心点 + (世界坐标 - 摄像机坐标) * 缩放因子
+			float _screen_x = (log_width / 2.0f) + (world_pos.x - position.x) * zoom;
+			float _screen_y = (log_height / 2.0f) + (world_pos.y - position.y) * zoom;
 			return Vector2(_screen_x, _screen_y);
 
-			/* PS：这里如果是直接画在屏幕上的，则视野中心点就是屏幕尺寸÷2，渲染坐标就要适应缩放比，
-				   但是如果间接画在画布上，再将画布以缩放比适配的形式铺在屏幕上，渲染坐标就不用适配缩放比 */
+			/* PS：摄像机视野就是整个逻辑窗口的尺寸，而且SDL3的Renderer会自动缩放，自动居中，因此无需适配缩放比 */
 		}
 
 		// 窗口坐标->世界坐标
 		Vector2 screen_to_world(const Vector2& screen_pos) const
 		{
+			int log_width, log_height;	// 逻辑窗口尺寸
+			SDL_GetRenderLogicalPresentation(Main_Renderer, &log_width, &log_height, nullptr);
+
 			// 世界坐标 = (窗口坐标 - 视野中心点) / 缩放因子 + 摄像机坐标
-			float _world_x = (screen_pos.x - normal_screen_width / 2.0f) / zoom + position.x;
-			float _world_y = (screen_pos.y - normal_screen_height / 2.0f) / zoom + position.y;
+			float _world_x = (screen_pos.x - log_width / 2.0f) / zoom + position.x;
+			float _world_y = (screen_pos.y - log_height / 2.0f) / zoom + position.y;
 			return Vector2(_world_x, _world_y);
 		}
 
 		// 判断对象是否在视野内(传原始是世界属性就行，内部会自动变换)
 		bool target_in_view(const Vector2& pos, const Size& size) const
 		{
+			int log_width, log_height;	// 逻辑窗口尺寸
+			SDL_GetRenderLogicalPresentation(Main_Renderer, &log_width, &log_height, nullptr);
+
 			// 世界属性变换
 			Vector2 _screen_pos = this->world_to_screen(pos);
 			Size _screen_size = { size.w * zoom, size.h * zoom };
 
 			// 检查是否在视野内
-			bool _in_range_x = (_screen_pos.x >= -_screen_size.w && _screen_pos.x <= normal_screen_width + _screen_size.w);
-			bool _in_range_y = (_screen_pos.y >= -_screen_size.h && _screen_pos.y <= normal_screen_height + _screen_size.h);
+			bool _in_range_x = (_screen_pos.x >= -_screen_size.w && _screen_pos.x <= log_width + _screen_size.w);
+			bool _in_range_y = (_screen_pos.y >= -_screen_size.h && _screen_pos.y <= log_height + _screen_size.h);
 			return (_in_range_x && _in_range_y);
 		}
 
@@ -282,11 +301,11 @@ export namespace fce
 		}
 
 		// 渲染文字
-		static void render_text(const Camera& camera, const Vector2& pos, TTF_Text* text, float ptsize, SDL_Color color)
+		static void render_text(const Camera& camera, const Vector2& pos, Text* text, float ptsize, SDL_Color color)
 		{
-			TTF_SetFontSize(TTF_GetTextFont(text), ptsize * camera.get_zoom());
-			TTF_SetTextColor(text, color.r, color.g, color.b, color.a);
-			TTF_DrawRendererText(text, camera.world_to_screen(pos).x, camera.world_to_screen(pos).y);
+			TTF_SetFontSize(TTF_GetTextFont(text->get_SDLText()), ptsize * camera.get_zoom());
+			TTF_SetTextColor(text->get_SDLText(), color.r, color.g, color.b, color.a);
+			TTF_DrawRendererText(text->get_SDLText(), camera.world_to_screen(pos).x, camera.world_to_screen(pos).y);
 		}
 	};
 }
