@@ -1,70 +1,69 @@
-# FlexCore
-依托SDL3的游戏开发框架 / Game development framework based on SDL3
-
-注意： 需要配置SDL3相关文件、需要C++17及以上版本
-
-使用方法： 将“FlexCore.h”添加到VS项目下
-
-=======================================================================
-
-Note: SDL3 related files need to be configured, C++ 17 and above are required, and all features are consolidated into a single header file compared to version 1.0
-
-How to Use: Add "FlexCore.h" under the VS project
+# FlexCore 游戏引擎
+FlexCore 是一个基于 SDL3 的轻量级 2D 游戏引擎，采用 C++20 模块化设计，提供了完整的游戏开发基础设施。
 
 
+✨ 特性
+模块化设计 - 基于 C++20 Module 构建，依赖清晰，易于扩展
 
-==================== 概  述 =============== Overview ==================
+渲染系统 - 支持摄像机、多渲染层、纹理图集、动画系统
 
-📦 核心组件
+物理碰撞 - SAT 分离轴碰撞检测，支持碰撞层掩码
 
-基础类型
+UI 系统 - 内置按钮、标签、滑块等基础 UI 组件
 
-Vector2/Point：2D 向量和坐标点操作
+资源管理 - 自动加载纹理、音频、字体资源
 
-Size：尺寸表示
+场景管理 - 场景切换、精灵管理、注册表查找
 
-Atlas：图集管理，支持多帧纹理加载
+工具集 - 数据序列化、随机数生成、时钟控制、数学工具
 
-StateNode：状态节点基类
 
-工具类
+📦 模块结构
 
-custom_error：自定义错误处理
+FlexCore
 
-Random：随机数生成器
+├── FCE_BaseSetup    - 基础配置（窗口、渲染器、颜色、枚举）
 
-Clock：全局游戏时钟，支持时间缩放和 FPS 控制
+├── FCE_BaseType     - 基础类型（Vector2、Rect、Atlas、Text、CollisionInfo）
 
-Data：数据读写器，支持多种数据类型的持久化存储
+├── FCE_Utils        - 工具类（Clock、Random、Data、数学函数）
 
-maths：数学工具函数，包括几何绘制、插值、摆动等
+├── FCE_Component    - 组件（Timer、CollisionBox、Animation、StateMachine）
 
-游戏元素
+├── FCE_Graphic      - 图形（Camera、Renderer）
 
-Timer：计时器，支持单次和循环触发
+├── FCE_UI           - UI 组件（IButton、ILabel、ISlider）
 
-Camera2D：2D 摄像机，支持平滑跟随、抖动效果和坐标转换
+├── FCE_Element      - 游戏元素（Sprite、SpriteGroup、Scene）
 
-Animation：序列帧动画，支持循环播放和回调
+├── FCE_Handler      - 管理器（ResourcesManager、CollisionManager、SceneManager）
 
-CollisionBox：碰撞箱，支持多层碰撞检测
+└── FlexCore         - 引擎入口（Game 类）
 
-Sprite：精灵基类，所有游戏对象的基类
 
-Label：文本标签
+📋 前置依赖
+C++20 编译器（支持 Module）
 
-Button：UI 按钮，支持悬停和点击效果
+SDL3 - 核心库
 
-行为控制器
+SDL3_image - 图像加载
 
-AnimationPlayer：动画播放器，管理多个动画状态
+SDL3_mixer - 音频播放
 
-StateMachine：状态机，管理游戏对象的状态转换
+SDL3_ttf - 字体渲染
 
-管理器
 
-ResourcesManager：资源管理器，统一加载和管理纹理、音频、字体等资源
+🎮 内置功能
+功能	说明
 
-SceneManager：场景管理器，管理游戏场景的切换和更新
+动画系统	支持序列帧动画、循环/单次播放、回调
 
-CollisionManager：碰撞管理器，处理游戏中的碰撞检测
+状态机	状态节点管理、切换、生命周期回调
+
+计时器	单次/循环触发、暂停/继续、回调函数
+
+数据持久化	键值对序列化存储（.kvp 格式）
+
+随机数	整数/浮点数区间随机
+
+时钟控制	FPS 限制、时间缩放、DeltaTime
